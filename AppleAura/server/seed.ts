@@ -1,4 +1,3 @@
-
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
 
@@ -27,10 +26,7 @@ async function seedDatabase() {
       storage.createCategory({ name: "Smartwatch", description: "Relojes inteligentes", icon: "⌚" }),
     ]);
 
-    // 2. Crear usuarios de prueba
-    console.log("👤 Creando usuarios de prueba...");
-    
-    // Comprador
+    // 2. Crear usuarios de prueba con credenciales específicas
     const buyer = await storage.createUser({
       email: "comprador@silicontrail.com",
       passwordHash: await bcrypt.hash("comprador123", 10),
@@ -149,18 +145,20 @@ async function seedDatabase() {
     }
 
     console.log("✅ ¡Base de datos poblada exitosamente!");
-    console.log("\n🔑 CREDENCIALES DE ACCESO:");
-    console.log("==========================================");
-    console.log("👤 COMPRADOR:");
-    console.log("   Email: comprador@silicontrail.com");
-    console.log("   Contraseña: comprador123");
-    console.log("\n🏪 VENDEDOR:");
-    console.log("   Email: vendedor@silicontrail.com");
-    console.log("   Contraseña: vendedor123");
-    console.log("\n👑 ADMINISTRADOR:");
-    console.log("   Email: admin@silicontrail.com");
-    console.log("   Contraseña: admin123");
-    console.log("==========================================");
+    console.log(`- ${users.length} usuarios creados`);
+    console.log(`- ${products.length} productos creados`);
+
+    console.log("\n🔐 CREDENCIALES DE LOGIN:");
+    console.log("👑 ADMINISTRADOR:");
+    console.log("   Email: admin@appleaura.com");
+    console.log("   Password: Admin2024!");
+    console.log("\n💼 VENDEDOR:");
+    console.log("   Email: vendedor@appleaura.com");
+    console.log("   Password: Seller2024!");
+    console.log("\n🛍️ COMPRADOR:");
+    console.log("   Email: comprador@appleaura.com");
+    console.log("   Password: Buyer2024!");
+    console.log("\n🚀 Para iniciar la app, ejecuta: npm run dev");
 
   } catch (error) {
     console.error("❌ Error al poblar la base de datos:", error);

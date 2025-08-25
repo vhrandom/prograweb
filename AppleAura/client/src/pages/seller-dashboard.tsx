@@ -1,404 +1,342 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { 
-  BarChart3, 
-  Package, 
-  ShoppingBag, 
-  Star, 
-  Settings, 
-  Plus,
-  Eye,
-  Edit,
-  TrendingUp,
-  DollarSign,
-  Users,
-  AlertCircle
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
-import { formatPrice } from "@/lib/currency";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  Package, 
+  DollarSign, 
+  ShoppingCart, 
+  TrendingUp, 
+  Plus, 
+  Eye, 
+  Edit, 
+  Trash2,
+  Upload
+} from "lucide-react";
 
 export default function SellerDashboard() {
-  const [, setLocation] = useLocation();
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("overview");
 
-  // Redirect if not seller
-  if (!isAuthenticated || user?.role !== 'seller') {
+  const [stats] = useState({
+    totalProducts: 24,
+    totalOrders: 156,
+    totalRevenue: 45680000,
+    pendingOrders: 8
+  });
+
+  const [products] = useState([
+    { 
+      id: "1", 
+      title: "iPhone 15 Pro Max", 
+      price: 1299990, 
+      stock: 15, 
+      status: "active",
+      sales: 45
+    },
+    { 
+      id: "2", 
+      title: "MacBook Pro 14\" M3", 
+      price: 2199990, 
+      stock: 8, 
+      status: "active",
+      sales: 23
+    },
+    { 
+      id: "3", 
+      title: "AirPods Pro", 
+      price: 279990, 
+      stock: 0, 
+      status: "out_of_stock",
+      sales: 67
+    },
+  ]);
+
+  const [recentOrders] = useState([
+    { id: "ORD-001", product: "iPhone 15 Pro Max", buyer: "María González", total: 1299990, status: "shipped", date: "2024-01-15" },
+    { id: "ORD-002", product: "MacBook Pro 14\"", buyer: "Carlos Mendoza", total: 2199990, status: "pending", date: "2024-01-14" },
+    { id: "ORD-003", product: "AirPods Pro", buyer: "Ana Rodríguez", total: 279990, status: "delivered", date: "2024-01-13" },
+  ]);
+
+  if (user?.role !== 'seller') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
-          <div className="w-16 h-16 bg-apple-gray-5 dark:bg-apple-dark-3 rounded-full flex items-center justify-center mx-auto mb-6">
-            <ShoppingBag className="w-8 h-8 text-apple-gray-1" />
-          </div>
-          <h1 className="text-title-1 font-semibold mb-4">Acceso de Vendedor Requerido</h1>
-          <p className="text-body text-apple-gray-1 mb-6">
-            Necesitas ser un vendedor verificado para acceder a este panel
-          </p>
-          <Button onClick={() => setLocation("/")}>
-            Volver al Inicio
-          </Button>
-        </div>
+      <div className="container mx-auto px-4 py-8">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-red-600">Acceso denegado. Solo vendedores pueden ver esta página.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  const { data: sellerProfile } = useQuery({
-    queryKey: ["/api/seller/profile"],
-    queryFn: async () => {
-      const response = await fetch("/api/seller/profile", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth-token")}`,
-        },
-      });
-      if (!response.ok) throw new Error("Failed to fetch seller profile");
-      return response.json();
-    },
-  });
-
-  const { data: products = [] } = useQuery({
-    queryKey: ["/api/products", { sellerId: sellerProfile?.id }],
-    queryFn: async () => {
-      if (!sellerProfile?.id) return [];
-      const response = await fetch(`/api/products?sellerId=${sellerProfile.id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth-token")}`,
-        },
-      });
-      if (!response.ok) throw new Error("Failed to fetch products");
-      return response.json();
-    },
-    enabled: !!sellerProfile?.id,
-  });
-
-  const { data: orders = [] } = useQuery({
-    queryKey: ["/api/seller/orders"],
-    queryFn: async () => {
-      const response = await fetch("/api/seller/orders", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth-token")}`,
-        },
-      });
-      if (!response.ok) throw new Error("Failed to fetch orders");
-      return response.json();
-    },
-  });
-
-  // Mock KPIs (would be calculated from real data)
-  const kpis = {
-    monthlySales: 245000000, // $2.450.000 in cents
-    pendingOrders: orders.filter((order: any) => order.status === 'pending').length,
-    averageRating: 4.8,
-    activeProducts: products.filter((product: any) => product.status === 'active').length,
-  };
-
-  const sidebarItems = [
-    { icon: BarChart3, label: "Dashboard", value: "dashboard", active: true },
-    { icon: Package, label: "Productos", value: "products", badge: products.length },
-    { icon: ShoppingBag, label: "Órdenes", value: "orders", badge: kpis.pendingOrders },
-    { icon: Star, label: "Reseñas", value: "reviews" },
-    { icon: Settings, label: "Configuración", value: "settings" },
-  ];
-
   return (
-    <div className="min-h-screen bg-apple-gray-6 dark:bg-apple-dark-1">
-      <div className="flex">
-        {/* Sidebar */}
-        <div className="w-64 bg-white dark:bg-apple-dark-2 border-r border-apple-gray-5 dark:border-apple-dark-3 min-h-screen">
-          <div className="p-6">
-            <h2 className="text-title-2 font-semibold text-gray-900 dark:text-white mb-6">Panel de Vendedor</h2>
-            <nav className="space-y-2">
-              {sidebarItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <a
-                    key={item.value}
-                    href="#"
-                    className={`flex items-center justify-between px-4 py-3 rounded-xl transition-colors ${
-                      item.active
-                        ? "bg-apple-blue text-white"
-                        : "text-gray-700 dark:text-gray-300 hover:bg-apple-gray-6 dark:hover:bg-apple-dark-3"
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Icon className="w-5 h-5" />
-                      <span className="text-body font-medium">{item.label}</span>
-                    </div>
-                    {item.badge && (
-                      <Badge className={`${
-                        item.active ? "bg-white text-apple-blue" : "bg-apple-red text-white"
-                      } text-caption-2`}>
-                        {item.badge}
-                      </Badge>
-                    )}
-                  </a>
-                );
-              })}
-            </nav>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 p-8">
-          <Tabs defaultValue="dashboard" className="w-full">
-            <TabsList className="hidden">
-              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-              <TabsTrigger value="products">Productos</TabsTrigger>
-              <TabsTrigger value="orders">Órdenes</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="dashboard" className="space-y-8">
-              {/* Welcome Header */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-title-1 font-semibold text-gray-900 dark:text-white">
-                    ¡Hola, {sellerProfile?.displayName || user?.name}! 👋
-                  </h1>
-                  <p className="text-body text-apple-gray-1 mt-1">
-                    Aquí tienes un resumen de tu tienda
-                  </p>
-                </div>
-                <Button 
-                  onClick={() => setLocation("/seller/products/new")}
-                  className="button-haptic bg-apple-blue dark:bg-apple-blue-dark text-white hover:bg-blue-600 dark:hover:bg-blue-500"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nuevo Producto
-                </Button>
-              </div>
-
-              {/* KPIs */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="glass-effect border-apple-gray-5 dark:border-apple-dark-3 hover-lift">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-footnote text-apple-gray-1">Ventas del Mes</p>
-                        <p className="text-title-1 font-bold text-gray-900 dark:text-white">
-                          {formatPrice(kpis.monthlySales)}
-                        </p>
-                        <p className="text-caption-1 text-apple-green flex items-center">
-                          <TrendingUp className="w-3 h-3 mr-1" />
-                          +12.5%
-                        </p>
-                      </div>
-                      <div className="w-12 h-12 bg-gradient-to-br from-apple-green to-tech-green rounded-xl flex items-center justify-center">
-                        <DollarSign className="w-6 h-6 text-white" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="glass-effect border-apple-gray-5 dark:border-apple-dark-3 hover-lift">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-footnote text-apple-gray-1">Órdenes Pendientes</p>
-                        <p className="text-title-1 font-bold text-gray-900 dark:text-white">
-                          {kpis.pendingOrders}
-                        </p>
-                        <p className="text-caption-1 text-apple-red">Requiere atención</p>
-                      </div>
-                      <div className="w-12 h-12 bg-gradient-to-br from-apple-red to-orange-500 rounded-xl flex items-center justify-center">
-                        <Package className="w-6 h-6 text-white" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="glass-effect border-apple-gray-5 dark:border-apple-dark-3 hover-lift">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-footnote text-apple-gray-1">Rating Promedio</p>
-                        <p className="text-title-1 font-bold text-gray-900 dark:text-white">
-                          {kpis.averageRating}
-                        </p>
-                        <p className="text-caption-1 text-apple-green flex items-center">
-                          <Star className="w-3 h-3 mr-1 fill-current" />
-                          Excelente
-                        </p>
-                      </div>
-                      <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center">
-                        <Star className="w-6 h-6 text-white" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="glass-effect border-apple-gray-5 dark:border-apple-dark-3 hover-lift">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-footnote text-apple-gray-1">Productos Activos</p>
-                        <p className="text-title-1 font-bold text-gray-900 dark:text-white">
-                          {kpis.activeProducts}
-                        </p>
-                        <p className="text-caption-1 text-apple-blue flex items-center">
-                          <TrendingUp className="w-3 h-3 mr-1" />
-                          Trending: 3
-                        </p>
-                      </div>
-                      <div className="w-12 h-12 bg-gradient-to-br from-apple-blue to-tech-blue rounded-xl flex items-center justify-center">
-                        <Package className="w-6 h-6 text-white" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Recent Orders */}
-              <Card className="border-apple-gray-5 dark:border-apple-dark-3">
-                <CardHeader>
-                  <CardTitle className="text-title-2 font-semibold">Órdenes Recientes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {orders.length === 0 ? (
-                    <div className="text-center py-8">
-                      <div className="w-12 h-12 bg-apple-gray-5 dark:bg-apple-dark-3 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <ShoppingBag className="w-6 h-6 text-apple-gray-1" />
-                      </div>
-                      <p className="text-body text-apple-gray-1">Aún no tienes órdenes</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {orders.slice(0, 5).map((order: any) => (
-                        <div
-                          key={order.id}
-                          className="flex items-center justify-between p-4 bg-apple-gray-6 dark:bg-apple-dark-3 rounded-xl hover:bg-apple-gray-5 dark:hover:bg-apple-dark-4 transition-colors"
-                        >
-                          <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 bg-apple-gray-4 dark:bg-apple-dark-4 rounded-lg flex items-center justify-center">
-                              <Package className="w-6 h-6 text-apple-gray-1" />
-                            </div>
-                            <div>
-                              <p className="text-headline font-semibold text-gray-900 dark:text-white">
-                                Orden #{order.id.slice(0, 8)}
-                              </p>
-                              <p className="text-footnote text-apple-gray-1">
-                                Cliente: Usuario
-                              </p>
-                              <p className="text-footnote text-apple-gray-1">
-                                {new Date(order.createdAt || Date.now()).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-headline font-semibold text-gray-900 dark:text-white">
-                              {formatPrice(order.unitPriceCents * order.quantity)}
-                            </p>
-                            <Badge className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200">
-                              En preparación
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="products" className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h1 className="text-title-1 font-semibold">Mis Productos</h1>
-                <Button className="button-haptic bg-apple-blue dark:bg-apple-blue-dark text-white">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nuevo Producto
-                </Button>
-              </div>
-
-              {products.length === 0 ? (
-                <Card className="border-apple-gray-5 dark:border-apple-dark-3">
-                  <CardContent className="p-12 text-center">
-                    <div className="w-16 h-16 bg-apple-gray-5 dark:bg-apple-dark-3 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <Package className="w-8 h-8 text-apple-gray-1" />
-                    </div>
-                    <h3 className="text-title-3 font-semibold mb-2">Aún no tienes productos</h3>
-                    <p className="text-body text-apple-gray-1 mb-6">
-                      Comienza creando tu primer producto para empezar a vender
-                    </p>
-                    <Button className="button-haptic bg-apple-blue dark:bg-apple-blue-dark text-white">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Crear Primer Producto
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="border-apple-gray-5 dark:border-apple-dark-3">
-                  <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="bg-apple-gray-6 dark:bg-apple-dark-3">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-subheadline font-medium text-apple-gray-1">Producto</th>
-                            <th className="px-6 py-3 text-left text-subheadline font-medium text-apple-gray-1">Estado</th>
-                            <th className="px-6 py-3 text-left text-subheadline font-medium text-apple-gray-1">Precio</th>
-                            <th className="px-6 py-3 text-left text-subheadline font-medium text-apple-gray-1">Stock</th>
-                            <th className="px-6 py-3 text-left text-subheadline font-medium text-apple-gray-1">Acciones</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-apple-gray-5 dark:divide-apple-dark-3">
-                          {products.map((product: any) => (
-                            <tr key={product.id} className="hover:bg-apple-gray-6 dark:hover:bg-apple-dark-3 transition-colors">
-                              <td className="px-6 py-4">
-                                <div className="flex items-center space-x-3">
-                                  <div className="w-10 h-10 bg-apple-gray-4 dark:bg-apple-dark-4 rounded-lg flex items-center justify-center">
-                                    <Package className="w-5 h-5 text-apple-gray-1" />
-                                  </div>
-                                  <div>
-                                    <p className="text-body font-medium text-gray-900 dark:text-white">
-                                      {product.title}
-                                    </p>
-                                    <p className="text-footnote text-apple-gray-1">
-                                      ID: {product.id.slice(0, 8)}
-                                    </p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4">
-                                <Badge className={
-                                  product.status === 'active' 
-                                    ? "bg-apple-green text-white"
-                                    : product.status === 'draft'
-                                    ? "bg-apple-gray-3 text-gray-700"
-                                    : "bg-apple-red text-white"
-                                }>
-                                  {product.status === 'active' ? 'Activo' : 
-                                   product.status === 'draft' ? 'Borrador' : 'Pausado'}
-                                </Badge>
-                              </td>
-                              <td className="px-6 py-4 text-body text-gray-900 dark:text-white">
-                                Desde {formatPrice(0)} {/* Would show min variant price */}
-                              </td>
-                              <td className="px-6 py-4 text-body text-gray-900 dark:text-white">
-                                -
-                              </td>
-                              <td className="px-6 py-4">
-                                <div className="flex items-center space-x-2">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <Eye className="w-4 h-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-          </Tabs>
-        </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Panel de Vendedor</h1>
+        <p className="text-gray-600">Bienvenido, {user.name}</p>
       </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Productos</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalProducts}</div>
+            <p className="text-xs text-muted-foreground">+2 este mes</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Órdenes Totales</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalOrders}</div>
+            <p className="text-xs text-muted-foreground">+12% desde el mes pasado</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Ingresos Totales</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">CLP ${(stats.totalRevenue / 100).toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">+15% desde el mes pasado</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Órdenes Pendientes</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.pendingOrders}</div>
+            <p className="text-xs text-muted-foreground">Requieren atención</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Resumen</TabsTrigger>
+          <TabsTrigger value="products">Productos</TabsTrigger>
+          <TabsTrigger value="orders">Órdenes</TabsTrigger>
+          <TabsTrigger value="add-product">Agregar Producto</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Órdenes Recientes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {recentOrders.slice(0, 3).map((order) => (
+                    <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <p className="font-medium text-sm">{order.product}</p>
+                        <p className="text-xs text-gray-600">{order.buyer}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-sm">CLP ${(order.total / 100).toLocaleString()}</p>
+                        <Badge variant={order.status === 'delivered' ? 'default' : order.status === 'shipped' ? 'secondary' : 'outline'} className="text-xs">
+                          {order.status === 'delivered' ? 'Entregado' : order.status === 'shipped' ? 'Enviado' : 'Pendiente'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Productos Top</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {products.map((product) => (
+                    <div key={product.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <p className="font-medium text-sm">{product.title}</p>
+                        <p className="text-xs text-gray-600">{product.sales} ventas</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-sm">CLP ${(product.price / 100).toLocaleString()}</p>
+                        <p className="text-xs text-gray-500">Stock: {product.stock}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="products">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Mis Productos</CardTitle>
+              <Button onClick={() => setActiveTab("add-product")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar Producto
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {products.map((product) => (
+                  <div key={product.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex-1">
+                      <h3 className="font-medium">{product.title}</h3>
+                      <p className="text-sm text-gray-600">CLP ${(product.price / 100).toLocaleString()}</p>
+                      <div className="flex items-center gap-4 mt-2">
+                        <Badge variant={product.status === 'active' ? 'default' : 'destructive'}>
+                          {product.status === 'active' ? 'Activo' : 'Sin Stock'}
+                        </Badge>
+                        <span className="text-sm text-gray-500">Stock: {product.stock}</span>
+                        <span className="text-sm text-gray-500">Ventas: {product.sales}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="orders">
+          <Card>
+            <CardHeader>
+              <CardTitle>Todas las Órdenes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentOrders.map((order) => (
+                  <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <p className="font-medium">{order.id}</p>
+                      <p className="text-sm text-gray-600">{order.product}</p>
+                      <p className="text-sm text-gray-500">Cliente: {order.buyer}</p>
+                      <p className="text-sm text-gray-500">{order.date}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">CLP ${(order.total / 100).toLocaleString()}</p>
+                      <Badge variant={order.status === 'delivered' ? 'default' : order.status === 'shipped' ? 'secondary' : 'outline'}>
+                        {order.status === 'delivered' ? 'Entregado' : order.status === 'shipped' ? 'Enviado' : 'Pendiente'}
+                      </Badge>
+                    </div>
+                    <Button variant="outline" size="sm">
+                      <Eye className="h-4 w-4 mr-1" />
+                      Ver
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="add-product">
+          <Card>
+            <CardHeader>
+              <CardTitle>Agregar Nuevo Producto</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Título del Producto</Label>
+                    <Input id="title" placeholder="Ej: iPhone 15 Pro Max" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Categoría</Label>
+                    <Select>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="smartphones">Smartphones</SelectItem>
+                        <SelectItem value="laptops">Laptops</SelectItem>
+                        <SelectItem value="tablets">Tablets</SelectItem>
+                        <SelectItem value="audio">Audio</SelectItem>
+                        <SelectItem value="smartwatch">Smartwatch</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descripción</Label>
+                  <Textarea 
+                    id="description" 
+                    placeholder="Describe tu producto en detalle..."
+                    rows={4}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Precio (CLP)</Label>
+                    <Input id="price" type="number" placeholder="1299990" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sku">SKU</Label>
+                    <Input id="sku" placeholder="IPH15PM-256-TB" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="stock">Stock Inicial</Label>
+                    <Input id="stock" type="number" placeholder="10" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="images">Imágenes del Producto</Label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                    <p className="text-sm text-gray-600">Arrastra imágenes aquí o haz clic para seleccionar</p>
+                    <p className="text-xs text-gray-500 mt-1">PNG, JPG hasta 5MB cada una</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <Button type="submit" className="flex-1">
+                    Crear Producto
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setActiveTab("products")}>
+                    Cancelar
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

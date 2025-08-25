@@ -28,24 +28,24 @@ async function seedDatabase() {
 
     // 2. Crear usuarios de prueba con credenciales específicas
     const buyer = await storage.createUser({
-      email: "comprador@silicontrail.com",
-      passwordHash: await bcrypt.hash("comprador123", 10),
+      email: "comprador@appleaura.com",
+      passwordHash: await bcrypt.hash("Buyer2024!", 10),
       name: "María González",
       role: "buyer"
     });
 
     // Vendedor
     const seller = await storage.createUser({
-      email: "vendedor@silicontrail.com",
-      passwordHash: await bcrypt.hash("vendedor123", 10),
+      email: "vendedor@appleaura.com",
+      passwordHash: await bcrypt.hash("Seller2024!", 10),
       name: "Carlos Mendoza",
       role: "seller"
     });
 
     // Administrador
     const admin = await storage.createUser({
-      email: "admin@silicontrail.com",
-      passwordHash: await bcrypt.hash("admin123", 10),
+      email: "admin@appleaura.com",
+      passwordHash: await bcrypt.hash("Admin2024!", 10),
       name: "Ana Rodríguez",
       role: "admin"
     });
@@ -145,7 +145,7 @@ async function seedDatabase() {
     }
 
     console.log("✅ ¡Base de datos poblada exitosamente!");
-    console.log(`- ${users.length} usuarios creados`);
+    console.log("- 3 usuarios creados");
     console.log(`- ${products.length} productos creados`);
 
     console.log("\n🔐 CREDENCIALES DE LOGIN:");

@@ -117,6 +117,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const products = await storage.getProducts(filters);
       res.json(products);
     } catch (error) {
+      console.log("Error obteniendo productos de BD, usando datos mock:", error);
+      
       // Fallback to mock data when database is not available
       const mockProducts = [
         {
@@ -205,12 +207,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       ];
 
-      // Apply search filter to mock data
+      // Apply search filter to mock data si existe
       let filteredProducts = mockProducts;
-      if (filters.search) {
+      const searchTerm = req.query.search as string;
+      if (searchTerm) {
         filteredProducts = mockProducts.filter(product => 
-          product.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-          product.description.toLowerCase().includes(filters.search.toLowerCase())
+          product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          product.description.toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
 

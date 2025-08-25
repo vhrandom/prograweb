@@ -190,7 +190,7 @@ export interface IStorage {
 
   // Reviews
   getReviewsByProductId(productId: string): Promise<Review[]>;
-  createReview(review: InsertReview): Promise<Review>;eview>;
+  createReview(review: InsertReview): Promise<Review>;
 
   // Categories
   createCategory(category: { name: string; description?: string; icon?: string; parentId?: string }): Promise<Category>;
@@ -422,11 +422,6 @@ export class DatabaseStorage implements IStorage {
 
   async clearCart(userId: string): Promise<void> {
     const [cart] = await db.select().from(schema.carts).where(eq(schema.carts.userId, userId));
-
-    if (cart) {
-      await db.delete(schema.cartItems).where(eq(schema.cartItems.cartId, cart.id));
-    }
-  }erId));
 
     if (cart) {
       await db.delete(schema.cartItems).where(eq(schema.cartItems.cartId, cart.id));

@@ -2,14 +2,14 @@ import { storage } from "./storage";
 import bcrypt from "bcrypt";
 
 const SAMPLE_IMAGES = [
-  "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600", // MacBook
-  "https://images.unsplash.com/photo-1512499617640-c74ae3a79d37?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600", // iPhone
-  "https://images.unsplash.com/photo-1546435770-a3e426bf472b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600", // iPad
-  "https://images.unsplash.com/photo-1625842268584-8f3296236761?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600", // AirPods
-  "https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600", // Apple Watch
-  "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600", // MacBook Pro
-  "https://images.unsplash.com/photo-1585060544812-6b45742d762f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600", // iPhone 12
-  "https://images.unsplash.com/photo-1551816230-ef5deaed4a26?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600", // iMac
+  "/images/products/macbook-pro-14.svg", // MacBook
+  "/images/products/iphone-15-pro-max.svg", // iPhone
+  "/images/products/ipad-pro-129.svg", // iPad
+  "/images/products/airpods-pro.svg", // AirPods
+  "/images/products/apple-watch-s9.svg", // Apple Watch
+  "/images/products/macbook-pro-14.svg", // MacBook Pro
+  "/images/products/iphone-15-pro-max.svg", // iPhone 12
+  "/images/products/imac-24.svg", // iMac
 ];
 
 async function seedDatabase() {

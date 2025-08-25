@@ -13,7 +13,7 @@ import type {
   Category, CartItem, OrderItem
 } from "@shared/schema";
 
-const databaseUrl = process.env.DATABASE_URL || "file:./database.sqlite";
+const databaseUrl = process.env.DATABASE_URL || "./database.sqlite";
 let dbPath = databaseUrl;
 
 // Si la URL contiene "file:", remover el prefijo
@@ -30,6 +30,113 @@ if (dbPath.startsWith("postgresql://")) {
 }
 
 const sqlite = new Database(dbPath);
+const db = drizzle(sqlite, { schema });
+
+// Crear tablas si no existen
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'buyer',
+    created_at INTEGER DEFAULT (strftime('%s', 'now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS seller_profiles (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL UNIQUE,
+    display_name TEXT NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at INTEGER DEFAULT (strftime('%s', 'now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS categories (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    parent_id TEXT,
+    icon TEXT,
+    FOREIGN KEY (parent_id) REFERENCES categories(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS products (
+    id TEXT PRIMARY KEY,
+    seller_id TEXT NOT NULL,
+    category_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    description TEXT,
+    specs_json TEXT,
+    images TEXT NOT NULL DEFAULT '[]',
+    status TEXT NOT NULL DEFAULT 'draft',
+    created_at INTEGER DEFAULT (strftime('%s', 'now')),
+    FOREIGN KEY (seller_id) REFERENCES seller_profiles(id),
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS product_variants (
+    id TEXT PRIMARY KEY,
+    product_id TEXT NOT NULL,
+    sku TEXT NOT NULL UNIQUE,
+    price_cents INTEGER NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CLP',
+    attributes_json TEXT,
+    FOREIGN KEY (product_id) REFERENCES products(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS reviews (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    product_id TEXT NOT NULL,
+    rating INTEGER NOT NULL,
+    comment TEXT,
+    created_at INTEGER DEFAULT (strftime('%s', 'now')),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS carts (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    created_at INTEGER DEFAULT (strftime('%s', 'now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS cart_items (
+    id TEXT PRIMARY KEY,
+    cart_id TEXT NOT NULL,
+    variant_id TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
+    FOREIGN KEY (variant_id) REFERENCES product_variants(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS orders (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    total_cents INTEGER NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CLP',
+    shipping_address_id TEXT,
+    created_at INTEGER DEFAULT (strftime('%s', 'now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS order_items (
+    id TEXT PRIMARY KEY,
+    order_id TEXT NOT NULL,
+    variant_id TEXT NOT NULL,
+    seller_id TEXT NOT NULL,
+    unit_price_cents INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY (variant_id) REFERENCES product_variants(id),
+    FOREIGN KEY (seller_id) REFERENCES seller_profiles(id)
+  );
+`);bPath);
 const db = drizzle(sqlite, { schema });
 
 export interface IStorage {

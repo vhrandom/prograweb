@@ -1,5 +1,6 @@
-import { drizzle } from "drizzle-orm/neon-http";
-import { neon } from "@neondatabase/serverless";
+
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
 import { eq, and, desc, asc, like, inArray, sql } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import type {
@@ -12,20 +13,13 @@ import type {
   Category, CartItem, OrderItem
 } from "@shared/schema";
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL || "file:./database.sqlite";
+const dbPath = databaseUrl.replace("file:", "");
 
-if (!databaseUrl) {
-  console.error("❌ DATABASE_URL no está configurada. Por favor, configura tu base de datos.");
-  console.log("📋 Pasos para configurar:");
-  console.log("1. Ve a https://neon.tech y crea una cuenta gratuita");
-  console.log("2. Crea una nueva base de datos");
-  console.log("3. Copia la URL de conexión");
-  console.log("4. Configúrala en las variables de entorno de Replit");
-  process.exit(1);
-}
+console.log(`📁 Usando base de datos SQLite: ${dbPath}`);
 
-const sql_client = neon(databaseUrl);
-const db = drizzle(sql_client, { schema });
+const sqlite = new Database(dbPath);
+const db = drizzle(sqlite, { schema });
 
 export interface IStorage {
   // Users

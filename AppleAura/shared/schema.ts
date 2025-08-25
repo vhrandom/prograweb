@@ -1,153 +1,154 @@
+
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, uuid, smallint, decimal } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer, blob, real } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Users table
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey().$default(() => crypto.randomUUID()),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash"),
   name: text("name").notNull(),
   role: text("role", { enum: ['buyer', 'seller', 'admin'] }).notNull().default('buyer'),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 // Seller profiles
-export const sellerProfiles = pgTable("seller_profiles", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: uuid("user_id").references(() => users.id).notNull().unique(),
+export const sellerProfiles = sqliteTable("seller_profiles", {
+  id: text("id").primaryKey().$default(() => crypto.randomUUID()),
+  userId: text("user_id").references(() => users.id).notNull().unique(),
   displayName: text("display_name").notNull(),
   description: text("description"),
   status: text("status", { enum: ['pending', 'verified', 'rejected'] }).notNull().default('pending'),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 // Addresses
-export const addresses = pgTable("addresses", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: uuid("user_id").references(() => users.id).notNull(),
+export const addresses = sqliteTable("addresses", {
+  id: text("id").primaryKey().$default(() => crypto.randomUUID()),
+  userId: text("user_id").references(() => users.id).notNull(),
   line1: text("line1").notNull(),
   line2: text("line2"),
   city: text("city").notNull(),
   region: text("region").notNull(),
   zipCode: text("zip_code").notNull(),
   country: text("country").notNull().default('Chile'),
-  isDefault: boolean("is_default").notNull().default(false),
+  isDefault: integer("is_default", { mode: 'boolean' }).notNull().default(false),
 });
 
 // Categories
-export const categories = pgTable("categories", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+export const categories = sqliteTable("categories", {
+  id: text("id").primaryKey().$default(() => crypto.randomUUID()),
   name: text("name").notNull().unique(),
   description: text("description"),
-  parentId: uuid("parent_id").references(() => categories.id),
+  parentId: text("parent_id").references(() => categories.id),
   icon: text("icon"),
 });
 
 // Products
-export const products = pgTable("products", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  sellerId: uuid("seller_id").references(() => sellerProfiles.id).notNull(),
-  categoryId: uuid("category_id").references(() => categories.id).notNull(),
+export const products = sqliteTable("products", {
+  id: text("id").primaryKey().$default(() => crypto.randomUUID()),
+  sellerId: text("seller_id").references(() => sellerProfiles.id).notNull(),
+  categoryId: text("category_id").references(() => categories.id).notNull(),
   title: text("title").notNull(),
   slug: text("slug").notNull().unique(),
   description: text("description"),
-  specsJson: jsonb("specs_json"),
-  images: text("images").array().notNull().default(sql`'{}'::text[]`),
+  specsJson: text("specs_json", { mode: 'json' }),
+  images: text("images", { mode: 'json' }).$type<string[]>().notNull().default(sql`'[]'`),
   status: text("status", { enum: ['draft', 'active', 'paused'] }).notNull().default('draft'),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 // Product variants
-export const productVariants = pgTable("product_variants", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  productId: uuid("product_id").references(() => products.id).notNull(),
+export const productVariants = sqliteTable("product_variants", {
+  id: text("id").primaryKey().$default(() => crypto.randomUUID()),
+  productId: text("product_id").references(() => products.id).notNull(),
   sku: text("sku").notNull().unique(),
   priceCents: integer("price_cents").notNull(),
   currency: text("currency").notNull().default('CLP'),
-  attributesJson: jsonb("attributes_json"),
+  attributesJson: text("attributes_json", { mode: 'json' }),
 });
 
 // Inventory
-export const inventory = pgTable("inventory", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  variantId: uuid("variant_id").references(() => productVariants.id).notNull(),
+export const inventory = sqliteTable("inventory", {
+  id: text("id").primaryKey().$default(() => crypto.randomUUID()),
+  variantId: text("variant_id").references(() => productVariants.id).notNull(),
   stock: integer("stock").notNull().default(0),
   reserved: integer("reserved").notNull().default(0),
 });
 
 // Carts
-export const carts = pgTable("carts", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: uuid("user_id").references(() => users.id).notNull(),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+export const carts = sqliteTable("carts", {
+  id: text("id").primaryKey().$default(() => crypto.randomUUID()),
+  userId: text("user_id").references(() => users.id).notNull(),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 // Cart items
-export const cartItems = pgTable("cart_items", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  cartId: uuid("cart_id").references(() => carts.id, { onDelete: 'cascade' }).notNull(),
-  variantId: uuid("variant_id").references(() => productVariants.id).notNull(),
+export const cartItems = sqliteTable("cart_items", {
+  id: text("id").primaryKey().$default(() => crypto.randomUUID()),
+  cartId: text("cart_id").references(() => carts.id, { onDelete: 'cascade' }).notNull(),
+  variantId: text("variant_id").references(() => productVariants.id).notNull(),
   quantity: integer("quantity").notNull(),
 });
 
 // Orders
-export const orders = pgTable("orders", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: uuid("user_id").references(() => users.id).notNull(),
+export const orders = sqliteTable("orders", {
+  id: text("id").primaryKey().$default(() => crypto.randomUUID()),
+  userId: text("user_id").references(() => users.id).notNull(),
   status: text("status", { 
     enum: ['pending', 'paid', 'preparing', 'shipped', 'delivered', 'cancelled'] 
   }).notNull().default('pending'),
   totalCents: integer("total_cents").notNull(),
   currency: text("currency").notNull().default('CLP'),
-  shippingAddressId: uuid("shipping_address_id").references(() => addresses.id),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  shippingAddressId: text("shipping_address_id").references(() => addresses.id),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 // Order items
-export const orderItems = pgTable("order_items", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  orderId: uuid("order_id").references(() => orders.id, { onDelete: 'cascade' }).notNull(),
-  variantId: uuid("variant_id").references(() => productVariants.id).notNull(),
-  sellerId: uuid("seller_id").references(() => sellerProfiles.id).notNull(),
+export const orderItems = sqliteTable("order_items", {
+  id: text("id").primaryKey().$default(() => crypto.randomUUID()),
+  orderId: text("order_id").references(() => orders.id, { onDelete: 'cascade' }).notNull(),
+  variantId: text("variant_id").references(() => productVariants.id).notNull(),
+  sellerId: text("seller_id").references(() => sellerProfiles.id).notNull(),
   unitPriceCents: integer("unit_price_cents").notNull(),
   quantity: integer("quantity").notNull(),
 });
 
 // Payments
-export const payments = pgTable("payments", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  orderId: uuid("order_id").references(() => orders.id).notNull().unique(),
+export const payments = sqliteTable("payments", {
+  id: text("id").primaryKey().$default(() => crypto.randomUUID()),
+  orderId: text("order_id").references(() => orders.id).notNull().unique(),
   provider: text("provider", { enum: ['stripe', 'webpay'] }).notNull(),
   providerRef: text("provider_ref").notNull(),
   amountCents: integer("amount_cents").notNull(),
   status: text("status", { 
     enum: ['requires_action', 'succeeded', 'failed', 'refunded'] 
   }).notNull(),
-  paidAt: timestamp("paid_at"),
+  paidAt: integer("paid_at", { mode: 'timestamp' }),
 });
 
 // Reviews
-export const reviews = pgTable("reviews", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: uuid("user_id").references(() => users.id).notNull(),
-  productId: uuid("product_id").references(() => products.id).notNull(),
-  rating: smallint("rating").notNull(),
+export const reviews = sqliteTable("reviews", {
+  id: text("id").primaryKey().$default(() => crypto.randomUUID()),
+  userId: text("user_id").references(() => users.id).notNull(),
+  productId: text("product_id").references(() => products.id).notNull(),
+  rating: integer("rating").notNull(),
   comment: text("comment"),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 // Support tickets
-export const supportTickets = pgTable("support_tickets", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: uuid("user_id").references(() => users.id).notNull(),
-  orderId: uuid("order_id").references(() => orders.id),
+export const supportTickets = sqliteTable("support_tickets", {
+  id: text("id").primaryKey().$default(() => crypto.randomUUID()),
+  userId: text("user_id").references(() => users.id).notNull(),
+  orderId: text("order_id").references(() => orders.id),
   subject: text("subject").notNull(),
   status: text("status", { 
     enum: ['open', 'in_progress', 'resolved', 'closed'] 
   }).notNull().default('open'),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 // Insert schemas
@@ -163,8 +164,8 @@ export const insertSellerProfileSchema = createInsertSchema(sellerProfiles).omit
 
 export const insertProductSchema = createInsertSchema(products).omit({
   id: true,
-  createdAt: true,
   slug: true,
+  createdAt: true,
 });
 
 export const insertProductVariantSchema = createInsertSchema(productVariants).omit({
@@ -181,19 +182,19 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({
   createdAt: true,
 });
 
-// Types
+// Type exports
 export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertUser = typeof users.$inferInsert;
 export type SellerProfile = typeof sellerProfiles.$inferSelect;
-export type InsertSellerProfile = z.infer<typeof insertSellerProfileSchema>;
-export type Product = typeof products.$inferSelect;
-export type InsertProduct = z.infer<typeof insertProductSchema>;
-export type ProductVariant = typeof productVariants.$inferSelect;
-export type InsertProductVariant = z.infer<typeof insertProductVariantSchema>;
-export type Order = typeof orders.$inferSelect;
-export type InsertOrder = z.infer<typeof insertOrderSchema>;
-export type Review = typeof reviews.$inferSelect;
-export type InsertReview = z.infer<typeof insertReviewSchema>;
+export type InsertSellerProfile = typeof sellerProfiles.$inferInsert;
 export type Category = typeof categories.$inferSelect;
+export type Product = typeof products.$inferSelect;
+export type InsertProduct = typeof products.$inferInsert;
+export type ProductVariant = typeof productVariants.$inferSelect;
+export type InsertProductVariant = typeof productVariants.$inferInsert;
 export type CartItem = typeof cartItems.$inferSelect;
+export type Order = typeof orders.$inferSelect;
+export type InsertOrder = typeof orders.$inferInsert;
 export type OrderItem = typeof orderItems.$inferSelect;
+export type Review = typeof reviews.$inferSelect;
+export type InsertReview = typeof reviews.$inferInsert;

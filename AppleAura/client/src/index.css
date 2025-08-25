@@ -1,0 +1,324 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(210, 25%, 7.8431%);
+  --card: hsl(180, 6.6667%, 97.0588%);
+  --card-foreground: hsl(210, 25%, 7.8431%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(210, 25%, 7.8431%);
+  --primary: hsl(211, 100%, 50%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(210, 25%, 7.8431%);
+  --secondary-foreground: hsl(0, 0%, 100%);
+  --muted: hsl(240, 1.9608%, 90%);
+  --muted-foreground: hsl(210, 25%, 7.8431%);
+  --accent: hsl(211.5789, 51.3514%, 92.7451%);
+  --accent-foreground: hsl(211, 100%, 50%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+  --border: hsl(214.2857, 31.7949%, 91.1765%);
+  --input: hsl(210, 16.6667%, 97.6471%);
+  --ring: hsl(211, 100%, 50%);
+  
+  /* Apple colors */
+  --apple-blue: hsl(211, 100%, 50%);
+  --apple-blue-dark: hsl(212, 100%, 52%);
+  --apple-green: hsl(142, 71%, 45%);
+  --apple-green-dark: hsl(142, 85%, 48%);
+  --apple-red: hsl(4, 100%, 59%);
+  --apple-red-dark: hsl(4, 100%, 63%);
+  --tech-blue: hsl(194, 100%, 50%);
+  --tech-green: hsl(82, 100%, 56%);
+  
+  /* Apple grays */
+  --apple-gray-1: hsl(240, 4%, 56%);
+  --apple-gray-2: hsl(240, 5%, 68%);
+  --apple-gray-3: hsl(240, 5%, 78%);
+  --apple-gray-4: hsl(240, 5%, 82%);
+  --apple-gray-5: hsl(240, 4%, 90%);
+  --apple-gray-6: hsl(240, 5%, 95%);
+  
+  /* Apple dark colors */
+  --apple-dark-1: hsl(240, 6%, 11%);
+  --apple-dark-2: hsl(240, 5%, 17%);
+  --apple-dark-3: hsl(240, 4%, 23%);
+  --apple-dark-4: hsl(240, 4%, 29%);
+  --apple-dark-5: hsl(240, 4%, 40%);
+  --apple-dark-6: hsl(240, 4%, 56%);
+  
+  --font-sans: 'Inter', 'SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Helvetica Neue', 'Arial', sans-serif;
+  --radius: 1rem;
+}
+
+.dark {
+  --background: hsl(240, 6%, 11%);
+  --foreground: hsl(240, 5%, 91%);
+  --card: hsl(240, 5%, 17%);
+  --card-foreground: hsl(240, 5%, 85%);
+  --popover: hsl(240, 6%, 11%);
+  --popover-foreground: hsl(240, 5%, 91%);
+  --primary: hsl(212, 100%, 52%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(240, 5%, 95%);
+  --secondary-foreground: hsl(210, 25%, 7.8431%);
+  --muted: hsl(240, 4%, 15%);
+  --muted-foreground: hsl(240, 4%, 46%);
+  --accent: hsl(205, 70%, 8%);
+  --accent-foreground: hsl(212, 100%, 52%);
+  --destructive: hsl(4, 100%, 59%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+  --border: hsl(240, 4%, 15%);
+  --input: hsl(240, 5%, 18%);
+  --ring: hsl(211, 100%, 50%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@layer components {
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  
+  .dark .glass-effect {
+    background: rgba(0, 0, 0, 0.2);
+  }
+  
+  .gradient-mesh {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    opacity: 0.1;
+  }
+  
+  .hover-lift {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  }
+  
+  .dark .hover-lift:hover {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  }
+  
+  .button-haptic {
+    transition: all 0.15s ease;
+  }
+  
+  .button-haptic:active {
+    transform: scale(0.98);
+  }
+  
+  .product-card-hover {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .product-card-hover:hover {
+    transform: translateY(-12px) scale(1.02);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+  }
+  
+  .dark .product-card-hover:hover {
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Typography Scale */
+  .text-display-large {
+    font-size: 2.75rem;
+    line-height: 3.25rem;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+  
+  .text-display {
+    font-size: 2.25rem;
+    line-height: 2.75rem;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+  
+  .text-title-1 {
+    font-size: 1.75rem;
+    line-height: 2.25rem;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+  }
+  
+  .text-title-2 {
+    font-size: 1.375rem;
+    line-height: 1.75rem;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+  }
+  
+  .text-title-3 {
+    font-size: 1.25rem;
+    line-height: 1.625rem;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+  }
+  
+  .text-headline {
+    font-size: 1.063rem;
+    line-height: 1.375rem;
+    letter-spacing: 0em;
+    font-weight: 600;
+  }
+  
+  .text-subheadline {
+    font-size: 0.938rem;
+    line-height: 1.25rem;
+    letter-spacing: 0em;
+    font-weight: 400;
+  }
+  
+  .text-footnote {
+    font-size: 0.813rem;
+    line-height: 1.125rem;
+    letter-spacing: 0em;
+    font-weight: 400;
+  }
+  
+  .text-caption-1 {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    letter-spacing: 0em;
+    font-weight: 400;
+  }
+  
+  .text-caption-2 {
+    font-size: 0.688rem;
+    line-height: 0.875rem;
+    letter-spacing: 0em;
+    font-weight: 400;
+  }
+}
+
+@layer utilities {
+  /* Animations */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+  
+  .animate-bounce-subtle {
+    animation: bounceSubtle 0.6s ease-out;
+  }
+  
+  .animate-glow-pulse {
+    animation: glowPulse 2s ease-in-out infinite;
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Custom shadows */
+  .shadow-apple {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  }
+  
+  .shadow-apple-lg {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+  
+  .shadow-apple-xl {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  .shadow-float {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+  
+  .shadow-glow-blue {
+    box-shadow: 0 0 20px rgba(0, 122, 255, 0.3);
+  }
+  
+  .shadow-glow-green {
+    box-shadow: 0 0 20px rgba(52, 199, 89, 0.3);
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+  
+  .dark ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes slideUp {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes scaleIn {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes bounceSubtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}

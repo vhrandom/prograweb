@@ -14,9 +14,20 @@ import type {
 } from "@shared/schema";
 
 const databaseUrl = process.env.DATABASE_URL || "file:./database.sqlite";
-const dbPath = databaseUrl.replace("file:", "");
+let dbPath = databaseUrl;
 
-console.log(`📁 Usando base de datos SQLite: ${dbPath}`);
+// Si la URL contiene "file:", remover el prefijo
+if (dbPath.startsWith("file:")) {
+  dbPath = dbPath.replace("file:", "");
+}
+
+// Si es una URL de PostgreSQL, usar SQLite por defecto
+if (dbPath.startsWith("postgresql://")) {
+  dbPath = "./database.sqlite";
+  console.log(`⚠️ Detectada URL de PostgreSQL, usando SQLite por defecto: ${dbPath}`);
+} else {
+  console.log(`📁 Usando base de datos SQLite: ${dbPath}`);
+}
 
 const sqlite = new Database(dbPath);
 const db = drizzle(sqlite, { schema });

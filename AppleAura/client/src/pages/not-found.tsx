@@ -45,7 +45,7 @@ export default function NotFound() {
 
             <Button
               variant="outline"
-              onClick={() => setLocation(prev => `${prev.pathname.substring(0, prev.pathname.lastIndexOf('/'))}${prev.pathname.substring(prev.pathname.lastIndexOf('/'))}`)}
+              onClick={() => window.history.back()}
               className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />

@@ -43,8 +43,8 @@ function App() {
                   <Route component={NotFound} />
                 </Switch>
               </main>
+              <Toaster />
             </div>
-            <Toaster />
           </CartProvider>
         </AuthProvider>
       </ThemeProvider>

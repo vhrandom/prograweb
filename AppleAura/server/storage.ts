@@ -138,8 +138,6 @@ sqlite.exec(`
   );
 `);
 
-const db = drizzle(sqlite, { schema });
-
 export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
@@ -344,6 +342,11 @@ export class DatabaseStorage implements IStorage {
   async createVariant(variant: InsertProductVariant): Promise<ProductVariant> {
     const [created] = await db.insert(schema.productVariants).values(variant).returning();
     return created;
+  }
+
+  // Alias para compatibilidad
+  async createProductVariant(variant: InsertProductVariant): Promise<ProductVariant> {
+    return this.createVariant(variant);
   }
 
   // Cart

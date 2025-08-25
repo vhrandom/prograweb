@@ -113,7 +113,7 @@ async function seedDatabase() {
     for (const productData of products) {
       const product = await storage.createProduct(productData);
       createdProducts.push(product);
-      
+
       // Crear variante para cada producto
       await storage.createVariant({
         productId: product.id,
@@ -131,7 +131,7 @@ async function seedDatabase() {
     console.log(`   📦 ${createdProducts.length} productos creados`);
     console.log(`   💰 ${createdProducts.length} variantes de precio creadas`);
     console.log(`\n🔑 Credenciales de acceso creadas en credentials.md`);
-    
+
   } catch (error) {
     console.error("❌ Error al poblar la base de datos:", error);
     throw error;
@@ -148,119 +148,6 @@ if (require.main === module) {
       console.error("💥 Error durante el poblado:", error);
       process.exit(1);
     });
-}",
-      status: "verified"
-    });
-
-    // 4. Crear productos de ejemplo
-    console.log("📦 Creando productos de ejemplo...");
-    const products = [
-      {
-        title: "iPhone 15 Pro Max",
-        description: "El iPhone más avanzado hasta ahora. Con chip A17 Pro, sistema de cámaras Pro y diseño en titanio.",
-        categoryId: categories[0].id,
-        images: [SAMPLE_IMAGES[1], SAMPLE_IMAGES[6]],
-        price: 1299990,
-        sku: "IPH15PM-256-TB"
-      },
-      {
-        title: "MacBook Pro 14\" M3",
-        description: "Portátil profesional con chip M3, pantalla Liquid Retina XDR y hasta 22 horas de batería.",
-        categoryId: categories[1].id,
-        images: [SAMPLE_IMAGES[0], SAMPLE_IMAGES[5]],
-        price: 2199990,
-        sku: "MBP14-M3-512-SG"
-      },
-      {
-        title: "iPad Pro 12.9\" M2",
-        description: "La experiencia iPad definitiva con chip M2, pantalla Liquid Retina XDR y compatibilidad con Apple Pencil.",
-        categoryId: categories[2].id,
-        images: [SAMPLE_IMAGES[2]],
-        price: 1349990,
-        sku: "IPD129-M2-256-SG"
-      },
-      {
-        title: "AirPods Pro (3ª generación)",
-        description: "Cancelación activa de ruido, audio espacial personalizado y hasta 6 horas de reproducción.",
-        categoryId: categories[3].id,
-        images: [SAMPLE_IMAGES[3]],
-        price: 279990,
-        sku: "APP3-WHT"
-      },
-      {
-        title: "Apple Watch Series 9",
-        description: "El smartwatch más avanzado de Apple con chip S9, pantalla Always-On más brillante.",
-        categoryId: categories[4].id,
-        images: [SAMPLE_IMAGES[4]],
-        price: 449990,
-        sku: "AWS9-45-GPS-MN"
-      },
-      {
-        title: "iMac 24\" M3",
-        description: "Todo en uno elegante con chip M3, pantalla 4.5K Retina y diseño ultradelgado.",
-        categoryId: categories[1].id,
-        images: [SAMPLE_IMAGES[7]],
-        price: 1799990,
-        sku: "IMC24-M3-256-BL"
-      }
-    ];
-
-    for (const productData of products) {
-      const product = await storage.createProduct({
-        sellerId: sellerProfile.id,
-        categoryId: productData.categoryId,
-        title: productData.title,
-        description: productData.description,
-        images: productData.images,
-        status: "active"
-      });
-
-      // Crear variante del producto
-      await storage.createProductVariant({
-        productId: product.id,
-        sku: productData.sku,
-        priceCents: productData.price,
-        currency: "CLP",
-        attributesJson: { color: "Default", storage: "256GB" }
-      });
-    }
-
-    // 5. Crear algunas reseñas de ejemplo
-    console.log("⭐ Creando reseñas de ejemplo...");
-    const allProducts = await storage.getProducts({});
-    for (const product of allProducts.slice(0, 3)) {
-      await storage.createReview({
-        userId: buyer.id,
-        productId: product.id,
-        rating: 5,
-        comment: "Excelente producto, muy recomendado. Llegó en perfectas condiciones y funciona increíble."
-      });
-    }
-
-    console.log("✅ ¡Base de datos poblada exitosamente!");
-    console.log("- 3 usuarios creados");
-    console.log(`- ${products.length} productos creados`);
-
-    console.log("\n🔐 CREDENCIALES DE LOGIN:");
-    console.log("👑 ADMINISTRADOR:");
-    console.log("   Email: admin@appleaura.com");
-    console.log("   Password: Admin2024!");
-    console.log("\n💼 VENDEDOR:");
-    console.log("   Email: vendedor@appleaura.com");
-    console.log("   Password: Seller2024!");
-    console.log("\n🛍️ COMPRADOR:");
-    console.log("   Email: comprador@appleaura.com");
-    console.log("   Password: Buyer2024!");
-    console.log("\n🚀 Para iniciar la app, ejecuta: npm run dev");
-
-  } catch (error) {
-    console.error("❌ Error al poblar la base de datos:", error);
-  }
-}
-
-// Ejecutar si se llama directamente
-if (import.meta.url === `file://${process.argv[1]}`) {
-  seedDatabase();
 }
 
 export { seedDatabase };

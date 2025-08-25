@@ -136,7 +136,8 @@ sqlite.exec(`
     FOREIGN KEY (variant_id) REFERENCES product_variants(id),
     FOREIGN KEY (seller_id) REFERENCES seller_profiles(id)
   );
-`);bPath);
+`);
+
 const db = drizzle(sqlite, { schema });
 
 export interface IStorage {

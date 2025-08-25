@@ -1,0 +1,9 @@
+
+<svg width="120" height="150" viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg">
+  <rect x="30" y="40" width="60" height="70" rx="15" fill="#1F2937" stroke="#9CA3AF" stroke-width="2"/>
+  <rect x="35" y="45" width="50" height="60" rx="8" fill="#000"/>
+  <rect x="45" y="30" width="30" height="15" rx="8" fill="#6B7280"/>
+  <rect x="45" y="105" width="30" height="15" rx="8" fill="#6B7280"/>
+  <circle cx="60" cy="75" r="15" fill="#374151"/>
+  <text x="60" y="135" text-anchor="middle" fill="#6B7280" font-family="Arial, sans-serif" font-size="10">Apple Watch</text>
+</svg>

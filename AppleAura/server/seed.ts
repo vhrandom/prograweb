@@ -138,7 +138,7 @@ async function seedDatabase() {
   }
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   seedDatabase()
     .then(() => {
       console.log("🌱 Proceso de poblado completado");

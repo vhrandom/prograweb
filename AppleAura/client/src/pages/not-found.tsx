@@ -1,11 +1,10 @@
-
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Home, Search, ArrowLeft } from "lucide-react";
 
 export default function NotFound() {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center p-4">
@@ -37,25 +36,25 @@ export default function NotFound() {
           {/* Botones de Acción */}
           <div className="space-y-3">
             <Button
-              onClick={() => navigate("/")}
+              onClick={() => setLocation("/")}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5"
             >
               <Home className="w-4 h-4 mr-2" />
               Ir al inicio
             </Button>
-            
+
             <Button
               variant="outline"
-              onClick={() => navigate(-1)}
+              onClick={() => setLocation(prev => `${prev.pathname.substring(0, prev.pathname.lastIndexOf('/'))}${prev.pathname.substring(prev.pathname.lastIndexOf('/'))}`)}
               className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Volver atrás
             </Button>
-            
+
             <Button
               variant="ghost"
-              onClick={() => navigate("/products")}
+              onClick={() => setLocation("/products")}
               className="w-full text-gray-600 hover:text-gray-900"
             >
               <Search className="w-4 h-4 mr-2" />
@@ -70,19 +69,19 @@ export default function NotFound() {
             </p>
             <div className="flex justify-center space-x-4 text-sm">
               <button
-                onClick={() => navigate("/")}
+                onClick={() => setLocation("/")}
                 className="text-blue-600 hover:underline"
               >
                 Inicio
               </button>
               <button
-                onClick={() => navigate("/products")}
+                onClick={() => setLocation("/products")}
                 className="text-blue-600 hover:underline"
               >
                 Productos
               </button>
               <button
-                onClick={() => navigate("/auth")}
+                onClick={() => setLocation("/auth")}
                 className="text-blue-600 hover:underline"
               >
                 Mi cuenta

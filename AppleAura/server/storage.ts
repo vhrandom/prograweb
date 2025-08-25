@@ -2,8 +2,8 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { eq, and, desc, asc, like, inArray, sql } from "drizzle-orm";
 import * as schema from "@shared/schema";
-import type { 
-  User, InsertUser, 
+import type {
+  User, InsertUser,
   Product, InsertProduct,
   ProductVariant, InsertProductVariant,
   SellerProfile, InsertSellerProfile,
@@ -12,7 +12,19 @@ import type {
   Category, CartItem, OrderItem
 } from "@shared/schema";
 
-const sql_client = neon(process.env.DATABASE_URL!);
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  console.error("❌ DATABASE_URL no está configurada. Por favor, configura tu base de datos.");
+  console.log("📋 Pasos para configurar:");
+  console.log("1. Ve a https://neon.tech y crea una cuenta gratuita");
+  console.log("2. Crea una nueva base de datos");
+  console.log("3. Copia la URL de conexión");
+  console.log("4. Configúrala en las variables de entorno de Replit");
+  process.exit(1);
+}
+
+const sql_client = neon(databaseUrl);
 const db = drizzle(sql_client, { schema });
 
 export interface IStorage {
@@ -138,41 +150,41 @@ export class DatabaseStorage implements IStorage {
     offset?: number;
   }): Promise<Product[]> {
     let query = db.select().from(schema.products);
-    
+
     const conditions = [];
-    
+
     if (filters?.categoryId) {
       conditions.push(eq(schema.products.categoryId, filters.categoryId));
     }
-    
+
     if (filters?.sellerId) {
       conditions.push(eq(schema.products.sellerId, filters.sellerId));
     }
-    
+
     if (filters?.status) {
       conditions.push(eq(schema.products.status, filters.status as any));
     } else {
       conditions.push(eq(schema.products.status, 'active'));
     }
-    
+
     if (filters?.search) {
       conditions.push(like(schema.products.title, `%${filters.search}%`));
     }
-    
+
     if (conditions.length > 0) {
       query = query.where(and(...conditions));
     }
-    
+
     query = query.orderBy(desc(schema.products.createdAt));
-    
+
     if (filters?.limit) {
       query = query.limit(filters.limit);
     }
-    
+
     if (filters?.offset) {
       query = query.offset(filters.offset);
     }
-    
+
     return await query;
   }
 
@@ -232,14 +244,14 @@ export class DatabaseStorage implements IStorage {
     .from(schema.cartItems)
     .innerJoin(schema.carts, eq(schema.cartItems.cartId, schema.carts.id))
     .where(eq(schema.carts.userId, userId));
-    
+
     return result;
   }
 
   async addToCart(userId: string, variantId: string, quantity: number): Promise<void> {
     // Get or create cart
     let [cart] = await db.select().from(schema.carts).where(eq(schema.carts.userId, userId));
-    
+
     if (!cart) {
       [cart] = await db.insert(schema.carts).values({ userId }).returning();
     }
@@ -267,7 +279,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateCartItem(userId: string, variantId: string, quantity: number): Promise<void> {
     const [cart] = await db.select().from(schema.carts).where(eq(schema.carts.userId, userId));
-    
+
     if (cart) {
       await db.update(schema.cartItems)
         .set({ quantity })
@@ -280,19 +292,18 @@ export class DatabaseStorage implements IStorage {
 
   async removeFromCart(userId: string, variantId: string): Promise<void> {
     const [cart] = await db.select().from(schema.carts).where(eq(schema.carts.userId, userId));
-    
+
     if (cart) {
-      await db.delete(schema.cartItems)
-        .where(and(
-          eq(schema.cartItems.cartId, cart.id),
-          eq(schema.cartItems.variantId, variantId)
-        ));
+      await db.delete(schema.cartItems).where(and(
+        eq(schema.cartItems.cartId, cart.id),
+        eq(schema.cartItems.variantId, variantId)
+      ));
     }
   }
 
   async clearCart(userId: string): Promise<void> {
     const [cart] = await db.select().from(schema.carts).where(eq(schema.carts.userId, userId));
-    
+
     if (cart) {
       await db.delete(schema.cartItems).where(eq(schema.cartItems.cartId, cart.id));
     }

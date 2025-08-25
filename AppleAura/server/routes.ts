@@ -3,8 +3,9 @@ import { createServer, type Server } from "http";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { storage } from "./storage";
-import { insertUserSchema, insertProductSchema, insertSellerProfileSchema, insertReviewSchema } from "@shared/schema";
+import { insertUserSchema, insertProductSchema, insertReviewSchema } from "@shared/schema";
 import { z } from "zod";
+import { insertSellerProfileSchema } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -31,12 +32,12 @@ const authenticateToken = async (req: any, res: any, next: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  
+
   // Auth routes
   app.post("/api/auth/register", async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
-      
+
       // Check if user exists
       const existingUser = await storage.getUserByEmail(userData.email);
       if (existingUser) {
@@ -45,7 +46,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Hash password
       const passwordHash = await bcrypt.hash(userData.passwordHash!, 10);
-      
+
       const user = await storage.createUser({
         ...userData,
         passwordHash
@@ -53,10 +54,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create JWT
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-      
-      res.json({ 
+
+      res.json({
         user: { ...user, passwordHash: undefined },
-        token 
+        token
       });
     } catch (error) {
       res.status(400).json({ message: "Registration failed", error });
@@ -66,7 +67,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
-      
+
       const user = await storage.getUserByEmail(email);
       if (!user || !user.passwordHash) {
         return res.status(401).json({ message: "Invalid credentials" });
@@ -78,10 +79,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-      
-      res.json({ 
+
+      res.json({
         user: { ...user, passwordHash: undefined },
-        token 
+        token
       });
     } catch (error) {
       res.status(400).json({ message: "Login failed", error });
@@ -118,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(products);
     } catch (error) {
       console.log("Error obteniendo productos de BD, usando datos mock:", error);
-      
+
       // Fallback to mock data when database is not available
       const mockProducts = [
         {
@@ -211,7 +212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let filteredProducts = mockProducts;
       const searchTerm = req.query.search as string;
       if (searchTerm) {
-        filteredProducts = mockProducts.filter(product => 
+        filteredProducts = mockProducts.filter(product =>
           product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           product.description.toLowerCase().includes(searchTerm.toLowerCase())
         );
@@ -240,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       let sellerId = req.body.sellerId;
-      
+
       // If user is a seller, get their profile ID
       if (req.user.role === 'seller') {
         const sellerProfile = await storage.getSellerProfile(req.user.id);
@@ -333,10 +334,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const profile = await storage.createSellerProfile(profileData);
-      
+
       // Update user role
       await storage.updateUser(req.user.id, { role: 'seller' });
-      
+
       res.json(profile);
     } catch (error) {
       res.status(400).json({ message: "Failed to create seller profile", error });

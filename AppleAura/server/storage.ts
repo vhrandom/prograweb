@@ -340,15 +340,10 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Categories
-  async getCategories(): Promise<Category[]> {
-    return await db.select().from(schema.categories);
-  }
-
+// Categories helper methods
   async createCategory(category: { name: string; description?: string; icon?: string; parentId?: string }): Promise<Category> {
     const [created] = await db.insert(schema.categories).values(category).returning();
     return created;
   }
-}
 
 export const storage = new DatabaseStorage();

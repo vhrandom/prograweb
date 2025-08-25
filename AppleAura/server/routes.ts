@@ -386,7 +386,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reviewData = insertReviewSchema.parse({
         ...req.body,
         userId: req.user.id,
-        productId: req.params.idid
+        productId: req.params.id
       });
 
       const review = await storage.createReview(reviewData);

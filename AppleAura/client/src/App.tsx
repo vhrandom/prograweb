@@ -5,6 +5,7 @@ import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/toaster";
 import { Navigation } from "./components/navigation";
 import { AuthProvider } from "./hooks/use-auth";
+import { CartProvider } from "./hooks/use-cart";
 
 import Home from "./pages/home";
 import Auth from "./pages/auth";
@@ -28,21 +29,23 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark" storageKey="appleaura-theme">
         <AuthProvider>
-          <div className="min-h-screen bg-background">
-            <Navigation />
-            <main className="pb-8">
-              <Switch>
-                <Route path="/" component={Home} />
-                <Route path="/auth" component={Auth} />
-                <Route path="/products/:slug" component={ProductDetail} />
-                <Route path="/cart" component={Cart} />
-                <Route path="/seller/dashboard" component={SellerDashboard} />
-                <Route path="/admin/dashboard" component={AdminDashboard} />
-                <Route component={NotFound} />
-              </Switch>
-            </main>
-          </div>
-          <Toaster />
+          <CartProvider>
+            <div className="min-h-screen bg-background">
+              <Navigation />
+              <main className="pb-8">
+                <Switch>
+                  <Route path="/" component={Home} />
+                  <Route path="/auth" component={Auth} />
+                  <Route path="/products/:slug" component={ProductDetail} />
+                  <Route path="/cart" component={Cart} />
+                  <Route path="/seller/dashboard" component={SellerDashboard} />
+                  <Route path="/admin/dashboard" component={AdminDashboard} />
+                  <Route component={NotFound} />
+                </Switch>
+              </main>
+            </div>
+            <Toaster />
+          </CartProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

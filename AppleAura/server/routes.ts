@@ -34,6 +34,32 @@ const authenticateToken = async (req: any, res: any, next: any) => {
 export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth routes
+  /**
+   * @swagger
+   * /api/auth/register:
+   *   post:
+   *     summary: Register a new user
+   *     tags: [Authentication]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/RegisterRequest'
+   *     responses:
+   *       200:
+   *         description: User registered successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/AuthResponse'
+   *       400:
+   *         description: Registration failed or user already exists
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   app.post("/api/auth/register", async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
@@ -64,6 +90,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/auth/login:
+   *   post:
+   *     summary: Login user
+   *     tags: [Authentication]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/LoginRequest'
+   *     responses:
+   *       200:
+   *         description: Login successful
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/AuthResponse'
+   *       401:
+   *         description: Invalid credentials
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
@@ -89,11 +141,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/auth/me:
+   *   get:
+   *     summary: Get current user profile
+   *     tags: [Authentication]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Current user information
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 user:
+   *                   $ref: '#/components/schemas/User'
+   *       401:
+   *         description: Unauthorized - invalid or missing token
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
     res.json({ user: { ...req.user, passwordHash: undefined } });
   });
 
   // Categories
+  /**
+   * @swagger
+   * /api/categories:
+   *   get:
+   *     summary: Get all product categories
+   *     tags: [Categories]
+   *     responses:
+   *       200:
+   *         description: List of all categories
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *                 properties:
+   *                   id:
+   *                     type: string
+   *                   name:
+   *                     type: string
+   *                   description:
+   *                     type: string
+   *                   icon:
+   *                     type: string
+   *       500:
+   *         description: Server error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   app.get("/api/categories", async (req, res) => {
     try {
       const categories = await storage.getCategories();
@@ -104,6 +212,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Products
+  /**
+   * @swagger
+   * /api/products:
+   *   get:
+   *     summary: Get products with filters
+   *     tags: [Products]
+   *     parameters:
+   *       - in: query
+   *         name: categoryId
+   *         schema:
+   *           type: string
+   *         description: Filter by category ID
+   *       - in: query
+   *         name: search
+   *         schema:
+   *           type: string
+   *         description: Search products by title
+   *       - in: query
+   *         name: sellerId
+   *         schema:
+   *           type: string
+   *         description: Filter by seller ID
+   *       - in: query
+   *         name: status
+   *         schema:
+   *           type: string
+   *           enum: [draft, active, inactive]
+   *         description: Filter by product status
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           default: 20
+   *         description: Number of products to return
+   *       - in: query
+   *         name: offset
+   *         schema:
+   *           type: integer
+   *           default: 0
+   *         description: Number of products to skip
+   *     responses:
+   *       200:
+   *         description: List of products
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 $ref: '#/components/schemas/Product'
+   *       500:
+   *         description: Server error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   app.get("/api/products", async (req, res) => {
     try {
       const filters = {

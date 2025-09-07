@@ -1,4 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './swagger';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedDatabase } from "./seed";
@@ -35,6 +37,19 @@ app.use((req, res, next) => {
   });
 
   next();
+});
+
+// Swagger UI setup
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customSiteTitle: 'AppleAura API Documentation',
+  customCss: '.swagger-ui .topbar { display: none }',
+  customfavIcon: '/favicon.ico',
+}));
+
+// API documentation JSON endpoint
+app.get('/api-docs.json', (_req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
 });
 
 (async () => {

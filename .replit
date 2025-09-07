@@ -4,7 +4,7 @@ modules = ["nodejs-20", "web"]
 channel = "stable-25_05"
 
 [workflows]
-runButton = "Dev Server Clean"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Dev Server"
@@ -24,6 +24,30 @@ mode = "sequential"
 task = "shell.exec"
 args = "cd AppleAura && pkill -f \"tsx server/index.ts\" || true && pkill -f \"node.*5000\" || true && sleep 2 && npm run dev"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Backend Server"
+
+[[workflows.workflow]]
+name = "Backend Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd AppleAura && npm run dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[agent]
+expertMode = true

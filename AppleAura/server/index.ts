@@ -1,37 +1,50 @@
-import express, { type Request, Response, NextFunction } from "express";
+// server/index.ts
+import 'dotenv/config'; // carga variables de .env al arrancar
+
+import express, { type Request, Response, NextFunction } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger';
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
-import { seedDatabase } from "./seed";
+import { registerRoutes } from './routes';
+import { setupVite, serveStatic, log } from './vite';
+import { seedDatabase } from './seed';
+
+// -----------------------------------------------------------------------------
+// Configuración de HOST/PORT con fallback seguro para Windows
+// -----------------------------------------------------------------------------
+const HOST = process.env.HOST?.trim() || '127.0.0.1'; // evitar 0.0.0.0 en Windows
+const PORT = Number(process.env.PORT || 5000);
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// -----------------------------------------------------------------------------
+// Logger simple para /api con captura de res.json
+// -----------------------------------------------------------------------------
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  let capturedJsonResponse: Record<string, any> | undefined;
 
   const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
+  res.json = function (bodyJson: any, ...args: any[]) {
     capturedJsonResponse = bodyJson;
+    // @ts-expect-error - mantener la firma original de express
     return originalResJson.apply(res, [bodyJson, ...args]);
   };
 
-  res.on("finish", () => {
+  res.on('finish', () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
+    if (path.startsWith('/api')) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        try {
+          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        } catch {
+          // ignora si no se puede serializar
+        }
       }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
+      if (logLine.length > 80) logLine = logLine.slice(0, 79) + '…';
       log(logLine);
     }
   });
@@ -39,54 +52,61 @@ app.use((req, res, next) => {
   next();
 });
 
-// Swagger UI setup
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customSiteTitle: 'AppleAura API Documentation',
-  customCss: '.swagger-ui .topbar { display: none }',
-  customfavIcon: '/favicon.ico',
-}));
+// -----------------------------------------------------------------------------
+// Swagger UI
+// -----------------------------------------------------------------------------
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    customSiteTitle: 'AppleAura API Documentation',
+    customCss: '.swagger-ui .topbar { display: none }',
+    customfavIcon: '/favicon.ico',
+  })
+);
 
-// API documentation JSON endpoint
+// JSON de la especificación
 app.get('/api-docs.json', (_req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
 });
 
+// -----------------------------------------------------------------------------
+// Bootstrap asíncrono
+// -----------------------------------------------------------------------------
 (async () => {
-  // Poblar base de datos si está vacía
-  if (process.env.SEED_DB === "true") {
+  // Poblar base de datos si se indica
+  if (process.env.SEED_DB === 'true') {
     await seedDatabase();
   }
 
+  // Registra rutas de API (debe devolver un http.Server o similar)
   const server = await registerRoutes(app);
 
+  // Manejo centralizado de errores después de montar rutas
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
+    const status = err?.status || err?.statusCode || 500;
+    const message = err?.message || 'Internal Server Error';
     res.status(status).json({ message });
-    throw err;
+    // Re-emite para que se vea en consola durante desarrollo
+    if (app.get('env') === 'development') {
+      // eslint-disable-next-line no-console
+      console.error(err);
+    }
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
+  // En desarrollo: Vite; en producción: estáticos
+  if (app.get('env') === 'development') {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
+  // ---------------------------------------------------------------------------
+  // ¡IMPORTANTE! Escuchar en HOST/PORT (no usar 0.0.0.0 en Windows)
+  // Node.js soporta server.listen(port, host, cb) de forma estándar.
+  // ---------------------------------------------------------------------------
+  server.listen(PORT, HOST, () => {
+    log(`Servidor escuchando en http://${HOST}:${PORT}`);
   });
 })();

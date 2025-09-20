@@ -1,3 +1,4 @@
-npm run dev ---> backend
-npm run dev:client ---> frontend
-npm run dev:all ---> backend + frontend
+## Ejecución
+- Backend: `npm run dev`
+- Frontend: `npm run dev:client`
+- Backend + Frontend: `npm run dev:all`

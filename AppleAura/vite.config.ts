@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import 'dotenv/config';
 import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
@@ -21,14 +22,29 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+      "@hooks": path.resolve(import.meta.dirname, "client", "src", "hooks"),
+      "@lib": path.resolve(import.meta.dirname, "client", "src", "lib"),
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
+  // Serve static files from the repository-level `public/` so images under
+  // `public/images/...` are available while Vite's root is `client/`.
+  publicDir: path.resolve(import.meta.dirname, "public"),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
   },
   server: {
+    port: Number(process.env.FRONTEND_PORT || 5173),
+    proxy: {
+      // Proxy /api requests to the backend server during development
+      '/api': {
+        target: `http://localhost:${process.env.PORT || 3000}`,
+        changeOrigin: true,
+        secure: false,
+      },
+      // Note: do not proxy `/images` — Vite now serves `public/` directly via `publicDir`
+    },
     fs: {
       strict: true,
       deny: ["**/.*"],

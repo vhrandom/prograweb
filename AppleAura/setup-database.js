@@ -41,7 +41,7 @@ function printNextSteps() {
   console.log('\n✅ Listo. Pasos siguientes:');
   console.log('1) Inicia el backend:   npx tsx server/index.ts');
   console.log('2) En otra terminal:    cd client && npm install && npm run dev');
-  console.log('3) Abre el frontend en: http://localhost:5173/\n');
+  console.log('3) Abre el frontend en: http://localhost:5000/\n');
 }
 
 async function main() {

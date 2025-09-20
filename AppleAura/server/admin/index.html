@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin — AppleAura (Dev)</title>
+    <style>
+      :root{--bg:#0f172a;--card:#0b1220;--muted:#94a3b8;--accent:#06b6d4}
+      html,body{height:100%}
+      body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Arial; margin:0; background:linear-gradient(180deg,#f8fafc, #eef2ff); color:#0f172a}
+      .wrap{max-width:1200px;margin:24px auto;padding:18px}
+      header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+      h1{margin:0;font-size:20px}
+      .controls{display:flex;gap:8px;align-items:center}
+      input[type=text],select{padding:8px;border-radius:8px;border:1px solid #e6eefc}
+      button{padding:8px 12px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer}
+      .grid{display:grid;grid-template-columns:1fr 360px;gap:16px}
+      .card{background:#ffffff;border-radius:10px;padding:12px;box-shadow:0 6px 18px rgba(15,23,42,0.06)}
+      table{width:100%;border-collapse:collapse}
+      th,td{padding:8px;text-align:left;border-bottom:1px solid #f1f5f9;font-size:13px}
+      img.thumb{width:72px;height:48px;object-fit:cover;border-radius:6px}
+      .muted{color:var(--muted);font-size:13px}
+      pre.json{background:#0b1220;color:#e6eefc;padding:12px;border-radius:8px;overflow:auto;max-height:420px}
+      .log{height:420px;overflow:auto;font-family:monospace;background:#0b1220;color:#e6eefc;padding:12px;border-radius:8px}
+      .actions button{margin-right:6px}
+      .toolbar{display:flex;gap:8px;align-items:center}
+      .small{font-size:12px;padding:6px 8px}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>Admin Panel — AppleAura (Dev)</h1>
+          <div class="muted">Herramienta para probar las APIs y visualizar resultados (no para producción)</div>
+        </div>
+        <div class="controls">
+          <input id="search" type="text" placeholder="Buscar por título o descripción" />
+          <select id="categoryFilter"><option value="">Todas las categorías</option></select>
+          <button id="refresh" class="small">Actualizar</button>
+        </div>
+      </header>
+
+      <div class="grid">
+        <div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <strong>Productos</strong>
+              <div class="muted" id="products-count">cargando…</div>
+            </div>
+            <div style="overflow:auto;max-height:520px">
+              <table id="products-table">
+                <thead>
+                  <tr><th>Imagen</th><th>Título</th><th>Precio</th><th>Categoría</th><th>Estado</th><th>Acciones</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <strong>Request Arbitraria</strong>
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <input id="req-url" type="text" value="/api/products" />
+              <button id="req-get" class="small">GET</button>
+              <button id="req-post" class="small">POST</button>
+            </div>
+            <textarea id="req-body" rows="6" style="width:100%;margin-top:8px">{}</textarea>
+            <div id="req-result" style="margin-top:8px"></div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <strong>Categorías</strong>
+            <div id="categories-list" style="margin-top:8px" class="muted">cargando…</div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <strong>JSON / Detalle</strong>
+            <pre id="json-view" class="json">—</pre>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <strong>Logs</strong>
+            <div id="log" class="log">Abre el panel y pulsa "Actualizar" para ver actividad.</div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <script>
+      const logEl = document.getElementById('log');
+      const tableBody = document.querySelector('#products-table tbody');
+      const productsCount = document.getElementById('products-count');
+      const jsonView = document.getElementById('json-view');
+      const categoriesList = document.getElementById('categories-list');
+      const categoryFilter = document.getElementById('categoryFilter');
+
+      function appendLog(txt){
+        const now = new Date().toLocaleTimeString();
+        logEl.textContent = `[${now}] ${txt}\n` + logEl.textContent;
+      }
+
+      async function apiFetch(path, opts = {}){
+        const url = path.startsWith('http') ? path : path;
+        appendLog(`${opts.method || 'GET'} ${url}`);
+        try{
+          const r = await fetch(url, opts);
+          const text = await r.text();
+          appendLog(`status ${r.status}`);
+          return { status: r.status, text, json: tryParse(text) };
+        }catch(e){
+          appendLog('ERROR: ' + e.message);
+          return { status: 0, text: String(e), json: null };
+        }
+      }
+
+      function tryParse(s){ try { return JSON.parse(s); } catch { return null } }
+
+      function renderProducts(products){
+        tableBody.innerHTML = '';
+        products.forEach(p => {
+          const tr = document.createElement('tr');
+          const img = document.createElement('td');
+          const thumb = document.createElement('img');
+          thumb.className = 'thumb';
+          thumb.src = (p.images && p.images[0]) ? p.images[0] : '/images/products/macbook-pro-14.svg';
+          thumb.onerror = () => thumb.src = '/images/products/macbook-pro-14.svg';
+          img.appendChild(thumb);
+
+          const title = document.createElement('td');
+          title.innerHTML = `<strong>${escapeHtml(p.title)}</strong><div class="muted">${escapeHtml((p.description||'').slice(0,120))}</div>`;
+
+          const priceTd = document.createElement('td');
+          const defaultVariant = (p.variants && p.variants[0]) || null;
+          priceTd.textContent = defaultVariant ? `${defaultVariant.priceCents || '?'} ${defaultVariant.currency || ''}` : '—';
+
+          const catTd = document.createElement('td');
+          catTd.textContent = p.categoryId || '-';
+
+          const statusTd = document.createElement('td');
+          statusTd.textContent = p.status || '-';
+
+          const actionsTd = document.createElement('td');
+          actionsTd.className = 'actions';
+          const btnView = document.createElement('button'); btnView.textContent = 'JSON'; btnView.className='small';
+          btnView.addEventListener('click', ()=>{ showJson(p); });
+          const btnOpen = document.createElement('button'); btnOpen.textContent='Abrir'; btnOpen.className='small';
+          btnOpen.addEventListener('click', ()=>{ window.open('/product/'+p.slug,'_blank'); });
+          actionsTd.appendChild(btnView); actionsTd.appendChild(btnOpen);
+
+          tr.appendChild(img); tr.appendChild(title); tr.appendChild(priceTd); tr.appendChild(catTd); tr.appendChild(statusTd); tr.appendChild(actionsTd);
+          tableBody.appendChild(tr);
+        });
+        productsCount.textContent = products.length + ' productos';
+      }
+
+      function showJson(obj){ jsonView.textContent = JSON.stringify(obj, null, 2); }
+
+      function escapeHtml(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+      async function loadCategories(){
+        const r = await apiFetch('/api/categories');
+        const list = r.json || [];
+        categoriesList.innerHTML = list.map(c=>`<div>${escapeHtml(c.name)}</div>`).join('');
+        // populate select
+        categoryFilter.innerHTML = '<option value="">Todas las categorías</option>' + list.map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
+      }
+
+      let lastProducts = [];
+
+      async function loadProducts(){
+        const search = document.getElementById('search').value.trim();
+        const cat = categoryFilter.value;
+        const params = new URLSearchParams(); if (search) params.set('search', search); if (cat) params.set('categoryId', cat);
+        const r = await apiFetch('/api/products?' + params.toString());
+        lastProducts = r.json || [];
+        renderProducts(lastProducts);
+      }
+
+      document.getElementById('refresh').addEventListener('click', ()=>{ loadProducts(); loadCategories(); });
+      document.getElementById('req-get').addEventListener('click', async ()=>{
+        const url = document.getElementById('req-url').value;
+        const r = await apiFetch(url);
+        document.getElementById('req-result').innerHTML = `<pre>${escapeHtml(r.text)}</pre>`;
+      });
+      document.getElementById('req-post').addEventListener('click', async ()=>{
+        const url = document.getElementById('req-url').value;
+        const body = document.getElementById('req-body').value;
+        const r = await apiFetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body });
+        document.getElementById('req-result').innerHTML = `<pre>${escapeHtml(r.text)}</pre>`;
+      });
+
+      // search debounce
+      let to = null; document.getElementById('search').addEventListener('input', ()=>{ clearTimeout(to); to = setTimeout(loadProducts, 350); });
+      categoryFilter.addEventListener('change', loadProducts);
+
+      // initial
+      (async function(){ await loadCategories(); await loadProducts(); appendLog('Panel cargado'); })();
+    </script>
+  </body>
+</html>

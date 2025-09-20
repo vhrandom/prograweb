@@ -23,6 +23,11 @@ export default function Home() {
     },
   });
 
+  // DEBUG: show products fetched in console to help troubleshooting
+  useEffect(() => {
+    console.log("[Home] products:", products, "isLoading:", isLoading, "searchQuery:", searchQuery);
+  }, [products, isLoading, searchQuery]);
+
   const quickFilters = [
     { icon: Cpu, label: "💻 Computación", filter: "computacion" },
     { icon: Smartphone, label: "📱 Smartphones", filter: "smartphones" },

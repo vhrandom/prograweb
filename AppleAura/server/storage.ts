@@ -320,6 +320,16 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async deleteProduct(id: string): Promise<void> {
+    // Delete product variants, inventory, and product itself in a transaction-like sequence
+    try {
+      await db.delete(schema.productVariants).where(eq(schema.productVariants.productId, id));
+      await db.delete(schema.products).where(eq(schema.products.id, id));
+    } catch (e) {
+      throw e;
+    }
+  }
+
   async updateProduct(id: string, updates: Partial<Product>): Promise<Product | undefined> {
     const [updated] = await db.update(schema.products)
       .set(updates)

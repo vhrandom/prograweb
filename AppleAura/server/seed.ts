@@ -16,48 +16,74 @@ async function seedDatabase() {
   console.log("🌱 Iniciando proceso de poblado de base de datos...");
 
   try {
-    // 1. Crear categorías
-    console.log("📱 Creando categorías...");
-    const categories = await Promise.all([
-      storage.createCategory({ name: "Smartphones", description: "Teléfonos inteligentes de última generación", icon: "📱" }),
-      storage.createCategory({ name: "Laptops", description: "Computadoras portátiles", icon: "💻" }),
-      storage.createCategory({ name: "Tablets", description: "Tabletas y iPads", icon: "📱" }),
-      storage.createCategory({ name: "Audio", description: "Audífonos y accesorios de audio", icon: "🎧" }),
-      storage.createCategory({ name: "Smartwatch", description: "Relojes inteligentes", icon: "⌚" }),
-    ]);
+    // 1. Crear categorías - idempotente: no crear si ya existen
+    console.log("📱 Creando categorías (si no existen)...");
+    const existingCategories = await storage.getCategories();
+    const existingNames = new Set(existingCategories.map((c) => c.name.toLowerCase()));
 
-    // 2. Crear usuarios de prueba con credenciales específicas
-    const buyer = await storage.createUser({
-      email: "comprador@appleaura.com",
-      passwordHash: await bcrypt.hash("Buyer2024!", 10),
-      name: "María González",
-      role: "buyer"
-    });
+    const desired = [
+      { name: "Smartphones", description: "Teléfonos inteligentes de última generación", icon: "📱" },
+      { name: "Laptops", description: "Computadoras portátiles", icon: "💻" },
+      { name: "Tablets", description: "Tabletas y iPads", icon: "📱" },
+      { name: "Audio", description: "Audífonos y accesorios de audio", icon: "🎧" },
+      { name: "Smartwatch", description: "Relojes inteligentes", icon: "⌚" },
+    ];
+
+    const categories: any[] = [];
+    for (const item of desired) {
+      const found = existingCategories.find((c) => c.name.toLowerCase() === item.name.toLowerCase());
+      if (found) {
+        categories.push(found);
+      } else {
+        const created = await storage.createCategory({ name: item.name, description: item.description, icon: item.icon });
+        categories.push(created);
+      }
+    }
+
+    // 2. Crear usuarios de prueba con credenciales específicas (idempotente)
+    let buyer = await storage.getUserByEmail("comprador@appleaura.com");
+    if (!buyer) {
+      buyer = await storage.createUser({
+        email: "comprador@appleaura.com",
+        passwordHash: await bcrypt.hash("Buyer2024!", 10),
+        name: "María González",
+        role: "buyer"
+      });
+    }
 
     // Vendedor
-    const seller = await storage.createUser({
-      email: "vendedor@appleaura.com",
-      passwordHash: await bcrypt.hash("Seller2024!", 10),
-      name: "Carlos Mendoza",
-      role: "seller"
-    });
+    let seller = await storage.getUserByEmail("vendedor@appleaura.com");
+    if (!seller) {
+      seller = await storage.createUser({
+        email: "vendedor@appleaura.com",
+        passwordHash: await bcrypt.hash("Seller2024!", 10),
+        name: "Carlos Mendoza",
+        role: "seller"
+      });
+    }
 
     // Administrador
-    const admin = await storage.createUser({
-      email: "admin@appleaura.com",
-      passwordHash: await bcrypt.hash("Admin2024!", 10),
-      name: "Ana Rodríguez",
-      role: "admin"
-    });
+    let admin = await storage.getUserByEmail("admin@appleaura.com");
+    if (!admin) {
+      admin = await storage.createUser({
+        email: "admin@appleaura.com",
+        passwordHash: await bcrypt.hash("Admin2024!", 10),
+        name: "Ana Rodríguez",
+        role: "admin"
+      });
+    }
 
-    // 3. Crear perfil de vendedor
+    // 3. Crear perfil de vendedor (idempotente)
     console.log("🏪 Creando perfil de vendedor...");
-    const sellerProfile = await storage.createSellerProfile({
-      userId: seller.id,
-      displayName: "TechStore Chile",
-      description: "Tu tienda de confianza para productos Apple y tecnología de calidad",
-      status: "verified"
-    });
+    let sellerProfile = await storage.getSellerProfile(seller.id);
+    if (!sellerProfile) {
+      sellerProfile = await storage.createSellerProfile({
+        userId: seller.id,
+        displayName: "TechStore Chile",
+        description: "Tu tienda de confianza para productos Apple y tecnología de calidad",
+        status: "verified"
+      });
+    }
 
     // 4. Crear productos de ejemplo
     console.log("📦 Creando productos de ejemplo...");
@@ -111,17 +137,29 @@ async function seedDatabase() {
 
     const createdProducts = [];
     for (const productData of products) {
-      const product = await storage.createProduct(productData);
-      createdProducts.push(product);
+      // Generar slug igual que storage.createProduct para buscar existencia
+      const slug = productData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      let product = await storage.getProductBySlug(slug);
+      if (!product) {
+        // Attach sellerId/categoryId are already set in productData
+        const slug = productData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        product = await storage.createProduct({ ...productData, slug });
+        createdProducts.push(product);
+      } else {
+        createdProducts.push(product);
+      }
 
-      // Crear variante para cada producto
-      await storage.createVariant({
-        productId: product.id,
-        sku: `${product.id}-DEFAULT`,
-        priceCents: Math.floor(Math.random() * 2000000) + 500000, // Entre $500k y $2.5M CLP
-        currency: "CLP",
-        attributesJson: { color: "Space Gray", size: "Standard" }
-      });
+      // Crear variante para cada producto si no existen variantes
+      const variants = await storage.getVariantsByProductId(product.id);
+      if (!variants || variants.length === 0) {
+        await storage.createVariant({
+          productId: product.id,
+          sku: `${product.id}-DEFAULT`,
+          priceCents: Math.floor(Math.random() * 2000000) + 500000, // Entre $500k y $2.5M CLP
+          currency: "CLP",
+          attributesJson: { color: "Space Gray", size: "Standard" }
+        });
+      }
     }
 
     console.log(`✅ Base de datos poblada exitosamente:`);
@@ -134,7 +172,7 @@ async function seedDatabase() {
 
   } catch (error) {
     console.error("❌ Error al poblar la base de datos:", error);
-    throw error;
+    // No re-lanzar: hacer el seed tolerante para que el servidor arranque
   }
 }
 

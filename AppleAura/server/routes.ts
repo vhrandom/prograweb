@@ -427,6 +427,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete product
+  app.delete('/api/products/:id', authenticateToken, async (req: any, res) => {
+    try {
+      const product = await storage.getProductById(req.params.id);
+      if (!product) return res.status(404).json({ message: 'Product not found' });
+
+      // Admins can delete any product
+      if (req.user.role === 'admin') {
+        await storage.deleteProduct(req.params.id);
+        return res.json({ message: 'Product deleted' });
+      }
+
+      // Sellers can delete products that belong to their seller profile
+      if (req.user.role === 'seller') {
+        const sellerProfile = await storage.getSellerProfile(req.user.id);
+        if (!sellerProfile) return res.status(403).json({ message: 'Access denied' });
+        if (product.sellerId !== sellerProfile.id) return res.status(403).json({ message: 'Cannot delete products of other sellers' });
+        await storage.deleteProduct(req.params.id);
+        return res.json({ message: 'Product deleted' });
+      }
+
+      return res.status(403).json({ message: 'Access denied' });
+    } catch (error) {
+      return res.status(500).json({ message: 'Failed to delete product', error });
+    }
+  });
+
   // Product variants
   app.get("/api/products/:id/variants", async (req, res) => {
     try {

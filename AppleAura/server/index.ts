@@ -2,10 +2,14 @@
 import 'dotenv/config'; // carga variables de .env al arrancar
 
 import express, { type Request, Response, NextFunction } from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import cors from "cors";
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger';
 import { registerRoutes } from './routes';
-import { setupVite, serveStatic, log } from './vite';
+import { log } from './vite';
 import { seedDatabase } from './seed';
 
 // -----------------------------------------------------------------------------
@@ -13,10 +17,22 @@ import { seedDatabase } from './seed';
 // -----------------------------------------------------------------------------
 const HOST = process.env.HOST?.trim() || '127.0.0.1'; // evitar 0.0.0.0 en Windows
 const PORT = Number(process.env.PORT || 5000);
+const FRONTEND_PORT = process.env.FRONTEND_PORT || 5000;
 
 const app = express();
+// During development allow any localhost origin to avoid port mismatches (Vite may pick an alternate port)
+const allowedOrigins = process.env.NODE_ENV !== 'production'
+  ? [/^http:\/\/localhost(?::\d+)?$/]
+  : [`http://localhost:${FRONTEND_PORT}`];
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// (La lógica de montaje de /admin se realiza más abajo en la fase de bootstrap)
 
 // -----------------------------------------------------------------------------
 // Logger simple para /api con captura de res.json
@@ -55,10 +71,11 @@ app.use((req, res, next) => {
 // -----------------------------------------------------------------------------
 // Swagger UI
 // -----------------------------------------------------------------------------
+// Swagger UI: evitar mismatch de tipos entre distintas copias de @types/express casteando
 app.use(
   '/api-docs',
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpec, {
+  (swaggerUi as any).serve,
+  (swaggerUi as any).setup(swaggerSpec, {
     customSiteTitle: 'AppleAura API Documentation',
     customCss: '.swagger-ui .topbar { display: none }',
     customfavIcon: '/favicon.ico',
@@ -95,17 +112,56 @@ app.get('/api-docs.json', (_req, res) => {
     }
   });
 
-  // En desarrollo: Vite; en producción: estáticos
-  if (app.get('env') === 'development') {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+  // En desarrollo: solo API; en producción: estáticos
+  // En producción podrías servir estáticos aquí si lo necesitas
+  // Montar admin UI de forma robusta usando la ruta del fichero actual
+  try {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+    const candidates = [
+      path.resolve(process.cwd(), 'server', 'admin'),
+      path.resolve(process.cwd(), 'admin'),
+      path.resolve(__dirname, 'admin'),
+      path.resolve(__dirname, '..', 'server', 'admin'),
+      path.resolve(__dirname, '..', 'admin'),
+    ];
+
+    let adminPath: string | null = null;
+    for (const c of candidates) {
+      if (fs.existsSync(c)) {
+        adminPath = c;
+        break;
+      }
+    }
+
+    if (adminPath) {
+      app.use('/admin', express.static(adminPath));
+      app.get('/admin', (_req, res) => res.sendFile(path.join(adminPath!, 'index.html')));
+      log(`Admin UI servida en /admin desde ${adminPath}`);
+    } else {
+      log('Admin UI no encontrada. Rutas comprobadas:\n' + candidates.join('\n'));
+    }
+  } catch (e) {
+    log('Error montando /admin: ' + String(e));
   }
 
   // ---------------------------------------------------------------------------
   // ¡IMPORTANTE! Escuchar en HOST/PORT (no usar 0.0.0.0 en Windows)
   // Node.js soporta server.listen(port, host, cb) de forma estándar.
   // ---------------------------------------------------------------------------
+  // Manejar errores de bind (p. ej. EADDRINUSE) para dar instrucciones al desarrollador
+  server.on('error', (err: any) => {
+    if (err && err.code === 'EADDRINUSE') {
+      log(`ERROR: puerto ${PORT} ya está en uso (EADDRINUSE).`);
+      log(`Sugerencia: encuentra y mata el proceso o usa 'npx kill-port ${PORT}' o cambia PORT en .env`);
+      // Salir con código distinto a 0 para indicar fallo de inicio
+      process.exit(1);
+    }
+    // Si es otro error, loguearlo y salir
+    log('Error del servidor: ' + String(err));
+    process.exit(1);
+  });
+
   server.listen(PORT, HOST, () => {
     log(`Servidor escuchando en http://${HOST}:${PORT}`);
   });

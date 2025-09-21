@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin — Silicon Trail (Dev)</title>
+    <style>
+      :root{--bg:#0f172a;--card:#0b1220;--muted:#94a3b8;--accent:#06b6d4}
+      html,body{height:100%}
+      body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Arial; margin:0; background:linear-gradient(180deg,#f8fafc, #eef2ff); color:#0f172a}
+      .wrap{max-width:1200px;margin:24px auto;padding:18px}
+      header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+      h1{margin:0;font-size:20px}
+      .controls{display:flex;gap:8px;align-items:center}
+      input[type=text],select{padding:8px;border-radius:8px;border:1px solid #e6eefc}
+      button{padding:8px 12px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer}
+      .grid{display:grid;grid-template-columns:1fr 360px;gap:16px}
+      .card{background:#ffffff;border-radius:10px;padding:12px;box-shadow:0 6px 18px rgba(15,23,42,0.06)}
+      table{width:100%;border-collapse:collapse}
+      th,td{padding:8px;text-align:left;border-bottom:1px solid #f1f5f9;font-size:13px}
+      img.thumb{width:72px;height:48px;object-fit:cover;border-radius:6px}
+      .muted{color:var(--muted);font-size:13px}
+      /* JSON viewer and result area: fixed max-heights and scroll to avoid layout shifts */
+      pre.json{background:#0b1220;color:#e6eefc;padding:12px;border-radius:8px;overflow:auto;max-height:420px;white-space:pre-wrap;word-break:break-word}
+      #req-result pre{max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-word;background:#f8fafc;padding:8px;border-radius:6px;border:1px solid #e6eefc}
+      .log{height:220px;overflow:auto;font-family:monospace;background:#0b1220;color:#e6eefc;padding:12px;border-radius:8px}
+      /* Ensure cards don't expand unexpectedly */
+      .card{min-height:0}
+      /* Table cell truncation to avoid very long texts breaking layout */
+      td, th{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      td .muted{white-space:normal;max-height:36px;overflow:hidden;text-overflow:ellipsis}
+      /* Make action buttons wrap if needed */
+      .actions{display:flex;flex-wrap:wrap;gap:6px}
+      .actions button{margin-right:0}
+      .toolbar{display:flex;gap:8px;align-items:center}
+      .small{font-size:12px;padding:6px 8px}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>Admin Panel — Silicon Trail (Dev)</h1>
+          <div class="muted">Herramienta para probar las APIs y visualizar resultados (no para producción)</div>
+        </div>
+        <div class="controls">
+          <input id="search" type="text" placeholder="Buscar por título o descripción" />
+          <select id="categoryFilter"><option value="">Todas las categorías</option></select>
+          <button id="refresh" class="small">Actualizar</button>
+        </div>
+      </header>
+
+      <div class="grid">
+        <div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <strong>Productos</strong>
+              <div class="muted" id="products-count">cargando…</div>
+            </div>
+            <div style="overflow:auto;max-height:520px">
+              <table id="products-table">
+                <thead>
+                  <tr><th>Imagen</th><th>Título</th><th>Precio</th><th>Categoría</th><th>Estado</th><th>Acciones</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <strong>Request Arbitraria</strong>
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <input id="req-url" type="text" value="/api/products" />
+              <button id="req-get" class="small">GET</button>
+              <button id="req-post" class="small">POST</button>
+            </div>
+            <textarea id="req-body" rows="6" style="width:100%;margin-top:8px">{}</textarea>
+            <div id="req-result" style="margin-top:8px"></div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <strong>Pruebas Rápidas</strong>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <button class="small" id="quick-1">GET /api/products</button>
+                <button class="small" id="quick-2">GET /api/products?limit=5</button>
+                <button class="small" id="quick-3">GET /api/products?search=iphone</button>
+                <button class="small" id="quick-4">GET /api/products/:id (1º)</button>
+                <button class="small" id="quick-5">GET /api/categories</button>
+                <button class="small" id="quick-6">POST /api/auth/register</button>
+                <button class="small" id="quick-7">POST /api/auth/login</button>
+                <button class="small" id="quick-8">POST /api/products (mock)</button>
+                <button class="small" id="quick-9">GET /api/products?categoryId=first</button>
+                <button class="small" id="quick-10">GET /api/products?offset=2</button>
+              </div>
+              <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+                <button class="small" id="create-seller">Crear perfil seller (POST)</button>
+                <button class="small" id="auto-register-seller">Auto: Register → Create Seller</button>
+              </div>
+              <div class="muted">Nota: los POST pueden alterar la base de datos. Las respuestas se muestran en el panel JSON y en logs.</div>
+            </div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <strong>Categorías</strong>
+            <div id="categories-list" style="margin-top:8px" class="muted">cargando…</div>
+          </div>
+
+          <div class="card" style="margin-top:12px" id="auth-card">
+            <strong>Auth (Admin)</strong>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">
+              <div class="muted">Email: <span id="auth-email">—</span></div>
+              <div class="muted">Rol: <span id="auth-role">—</span></div>
+              <div class="muted" style="word-break:break-all;max-height:48px;overflow:auto">Token: <small id="auth-token">—</small></div>
+              <div style="display:flex;gap:8px">
+                <button id="auth-logout" class="small">Logout</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <strong>JSON / Detalle</strong>
+            <pre id="json-view" class="json">—</pre>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <strong>Logs</strong>
+            <div id="log" class="log">Abre el panel y pulsa "Actualizar" para ver actividad.</div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <script>
+      const logEl = document.getElementById('log');
+      const tableBody = document.querySelector('#products-table tbody');
+      const productsCount = document.getElementById('products-count');
+      const jsonView = document.getElementById('json-view');
+      const categoriesList = document.getElementById('categories-list');
+      const categoryFilter = document.getElementById('categoryFilter');
+
+      function appendLog(txt){
+        const now = new Date().toLocaleTimeString();
+        logEl.textContent = `[${now}] ${txt}\n` + logEl.textContent;
+      }
+
+      // auth token stored after register/login (keeps session for POSTs)
+      let authToken = localStorage.getItem('admin_auth_token') || null;
+      let lastRegisteredEmail = localStorage.getItem('admin_last_email') || null;
+
+      async function apiFetch(path, opts = {}){
+        const url = path.startsWith('http') ? path : path;
+        appendLog(`${opts.method || 'GET'} ${url}`);
+        try{
+          const headers = Object.assign({}, opts.headers || {});
+          if (authToken && !headers['Authorization']) headers['Authorization'] = 'Bearer ' + authToken;
+          const r = await fetch(url, Object.assign({}, opts, { headers }));
+          const text = await r.text();
+          appendLog(`status ${r.status}`);
+          return { status: r.status, text, json: tryParse(text) };
+        }catch(e){
+          appendLog('ERROR: ' + e.message);
+          return { status: 0, text: String(e), json: null };
+        }
+      }
+
+      function tryParse(s){ try { return JSON.parse(s); } catch { return null } }
+
+      function renderProducts(products){
+        tableBody.innerHTML = '';
+        products.forEach(p => {
+          const tr = document.createElement('tr');
+          const img = document.createElement('td');
+          const thumb = document.createElement('img');
+          thumb.className = 'thumb';
+          thumb.src = (p.images && p.images[0]) ? p.images[0] : '/images/products/macbook-pro-14.svg';
+          thumb.onerror = () => thumb.src = '/images/products/macbook-pro-14.svg';
+          img.appendChild(thumb);
+
+          const title = document.createElement('td');
+          title.innerHTML = `<strong>${escapeHtml(p.title)}</strong><div class="muted">${escapeHtml((p.description||'').slice(0,120))}</div>`;
+
+          const priceTd = document.createElement('td');
+          const defaultVariant = (p.variants && p.variants[0]) || null;
+          priceTd.textContent = defaultVariant ? `${defaultVariant.priceCents || '?'} ${defaultVariant.currency || ''}` : '—';
+
+          const catTd = document.createElement('td');
+          catTd.textContent = p.categoryId || '-';
+
+          const statusTd = document.createElement('td');
+          statusTd.textContent = p.status || '-';
+
+          const actionsTd = document.createElement('td');
+          actionsTd.className = 'actions';
+          const btnView = document.createElement('button'); btnView.textContent = 'JSON'; btnView.className='small';
+          btnView.addEventListener('click', ()=>{ showJson(p); });
+          const btnOpen = document.createElement('button'); btnOpen.textContent='Abrir'; btnOpen.className='small';
+          btnOpen.addEventListener('click', ()=>{ window.open('/product/'+p.slug,'_blank'); });
+          const btnDelete = document.createElement('button'); btnDelete.textContent='Eliminar'; btnDelete.className='small';
+          btnDelete.addEventListener('click', async ()=>{
+            if (!confirm('¿Eliminar producto "' + (p.title||'') + '"? Esta acción no es reversible.')) return;
+            const r = await apiFetch('/api/products/' + p.id, { method: 'DELETE' });
+            await showResult(r);
+            if (r.status >= 200 && r.status < 300) {
+              appendLog('Producto eliminado, actualizando lista...');
+              await loadProducts();
+            }
+          });
+          actionsTd.appendChild(btnView); actionsTd.appendChild(btnOpen);
+          actionsTd.appendChild(btnDelete);
+
+          tr.appendChild(img); tr.appendChild(title); tr.appendChild(priceTd); tr.appendChild(catTd); tr.appendChild(statusTd); tr.appendChild(actionsTd);
+          tableBody.appendChild(tr);
+        });
+        productsCount.textContent = products.length + ' productos';
+      }
+
+      function showJson(obj){ jsonView.textContent = JSON.stringify(obj, null, 2); }
+
+      function escapeHtml(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+      async function loadCategories(){
+        const r = await apiFetch('/api/categories');
+        const list = r.json || [];
+        categoriesList.innerHTML = list.map(c=>`<div>${escapeHtml(c.name)}</div>`).join('');
+        // populate select
+        categoryFilter.innerHTML = '<option value="">Todas las categorías</option>' + list.map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
+      }
+
+      let lastProducts = [];
+
+      async function loadProducts(){
+        const search = document.getElementById('search').value.trim();
+        const cat = categoryFilter.value;
+        const params = new URLSearchParams(); if (search) params.set('search', search); if (cat) params.set('categoryId', cat);
+        const r = await apiFetch('/api/products?' + params.toString());
+        lastProducts = r.json || [];
+        renderProducts(lastProducts);
+      }
+
+      document.getElementById('refresh').addEventListener('click', ()=>{ loadProducts(); loadCategories(); });
+      document.getElementById('req-get').addEventListener('click', async ()=>{
+        const url = document.getElementById('req-url').value;
+        const r = await apiFetch(url);
+        document.getElementById('req-result').innerHTML = `<pre>${escapeHtml(r.text)}</pre>`;
+      });
+      document.getElementById('req-post').addEventListener('click', async ()=>{
+        const url = document.getElementById('req-url').value;
+        const body = document.getElementById('req-body').value;
+        const r = await apiFetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body });
+        document.getElementById('req-result').innerHTML = `<pre>${escapeHtml(r.text)}</pre>`;
+      });
+
+      // Quick test buttons
+      async function showResult(r){
+        const statusLine = `Status: ${r.status}\n`;
+        const txt = statusLine + (r.text || JSON.stringify(r.json || r, null, 2));
+        document.getElementById('req-result').innerHTML = `<pre>${escapeHtml(txt)}</pre>`;
+        if (r.json) showJson(r.json);
+      }
+
+      // Auth UI helpers
+      const authEmailEl = document.getElementById('auth-email');
+      const authRoleEl = document.getElementById('auth-role');
+      const authTokenEl = document.getElementById('auth-token');
+
+      async function updateAuthUI(){
+        authTokenEl.textContent = authToken || '—';
+        if (!authToken) { authEmailEl.textContent = '—'; authRoleEl.textContent = '—'; return; }
+        const me = await apiFetch('/api/auth/me');
+        if (me.status === 200 && me.json && me.json.user) {
+          authEmailEl.textContent = me.json.user.email || '—';
+          authRoleEl.textContent = me.json.user.role || '—';
+        } else {
+          authEmailEl.textContent = '—'; authRoleEl.textContent = '—';
+        }
+      }
+
+      document.getElementById('auth-logout').addEventListener('click', ()=>{
+        authToken = null; localStorage.removeItem('admin_auth_token'); localStorage.removeItem('admin_last_email');
+        appendLog('Logout efectuado'); updateAuthUI();
+      });
+
+      document.getElementById('create-seller').addEventListener('click', async ()=>{
+        if (!authToken) { appendLog('Crear perfil seller requiere auth. Haz register/login primero.'); document.getElementById('req-result').innerHTML = `<pre>${escapeHtml('Auth required.')}</pre>`; return; }
+        // create seller profile with minimal displayName
+        const payload = { displayName: 'Seller ' + Date.now(), description: 'Perfil creado desde admin panel' };
+        const r = await apiFetch('/api/seller/profile', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        await showResult(r);
+        // refresh auth UI to show role change if any
+        await updateAuthUI();
+        // refresh products to reflect any changes
+        await loadProducts();
+      });
+
+      document.getElementById('auto-register-seller').addEventListener('click', async ()=>{
+        // generate an email to try to register (or reuse lastRegisteredEmail)
+        let email = lastRegisteredEmail || `auto+${Date.now()}@example.com`;
+        let password = 'password123';
+        appendLog('Auto flow: register -> create seller');
+
+        // try register
+        const regPayload = { name: 'Auto User', email, passwordHash: password };
+        let reg = await apiFetch('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(regPayload) });
+        if (reg.status === 400 && reg.json && reg.json.message && /already exists/i.test(reg.json.message)) {
+          appendLog('Usuario ya existe, intentando login');
+          // attempt login
+          const loginPayload = { email, password };
+          const login = await apiFetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(loginPayload) });
+          if (login.json && login.json.token) {
+            authToken = login.json.token; localStorage.setItem('admin_auth_token', authToken); lastRegisteredEmail = email; localStorage.setItem('admin_last_email', lastRegisteredEmail);
+            appendLog('Login exitoso, token almacenado');
+          } else {
+            appendLog('Login falló: ' + (login.text || login.status)); document.getElementById('req-result').innerHTML = `<pre>${escapeHtml(login.text || 'Login failed')}</pre>`; return;
+          }
+        } else if (reg.status >=200 && reg.status < 300 && reg.json && reg.json.token) {
+          authToken = reg.json.token; localStorage.setItem('admin_auth_token', authToken); lastRegisteredEmail = email; localStorage.setItem('admin_last_email', lastRegisteredEmail);
+          appendLog('Registro exitoso, token almacenado');
+        } else if (reg.status >=200 && reg.status < 300) {
+          appendLog('Registro devuelto sin token, proceder a login');
+        } else {
+          appendLog('Registro falló: ' + (reg.text || reg.status)); document.getElementById('req-result').innerHTML = `<pre>${escapeHtml(reg.text || 'Register failed')}</pre>`; return;
+        }
+
+        // now create seller profile
+        await updateAuthUI();
+        const payload = { displayName: 'Auto Seller ' + Date.now(), description: 'Creado automáticamente' };
+        const r = await apiFetch('/api/seller/profile', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        await showResult(r);
+        await updateAuthUI();
+        // refresh products after seller creation
+        await loadProducts();
+      });
+
+
+      document.getElementById('quick-1').addEventListener('click', async ()=>{ const r = await apiFetch('/api/products'); await showResult(r); });
+      document.getElementById('quick-2').addEventListener('click', async ()=>{ const r = await apiFetch('/api/products?limit=5'); await showResult(r); });
+      document.getElementById('quick-3').addEventListener('click', async ()=>{ const r = await apiFetch('/api/products?search=iphone'); await showResult(r); });
+      document.getElementById('quick-4').addEventListener('click', async ()=>{
+        const id = (lastProducts && lastProducts[0] && lastProducts[0].id) ? lastProducts[0].id : null;
+        if (!id) { appendLog('No hay productos cargados'); return; }
+        const r = await apiFetch('/api/products/' + id); await showResult(r);
+      });
+      document.getElementById('quick-5').addEventListener('click', async ()=>{ const r = await apiFetch('/api/categories'); await showResult(r); });
+
+      // POST register/login using safe test payloads (may be prevented by server validations)
+      document.getElementById('quick-6').addEventListener('click', async ()=>{
+        const email = `test+${Date.now()}@example.com`;
+        const payload = { name: 'test user', email, passwordHash: 'password123' };
+        const r = await apiFetch('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        // store token/email on success
+        if (r.json && r.json.token) {
+          authToken = r.json.token;
+          localStorage.setItem('admin_auth_token', authToken);
+          lastRegisteredEmail = email;
+          localStorage.setItem('admin_last_email', lastRegisteredEmail);
+          appendLog('Auth token almacenado localmente');
+        }
+        await showResult(r);
+      });
+      document.getElementById('quick-7').addEventListener('click', async ()=>{
+        const email = lastRegisteredEmail || 'test@example.com';
+        const payload = { email, password: 'password123' };
+        const r = await apiFetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        if (r.json && r.json.token) {
+          authToken = r.json.token;
+          localStorage.setItem('admin_auth_token', authToken);
+          appendLog('Auth token almacenado localmente');
+        }
+        await showResult(r);
+      });
+
+      // Attempt create product (may require auth) — minimal safe mock
+      document.getElementById('quick-8').addEventListener('click', async ()=>{
+        if (!authToken) { appendLog('POST /api/products requiere auth. Haz register/login primero.'); document.getElementById('req-result').innerHTML = `<pre>${escapeHtml('Auth required. Ejecuta Register/Login primero.')}</pre>`; return; }
+        // verify current user role
+        const me = await apiFetch('/api/auth/me');
+        if (me.status !== 200 || !me.json || !me.json.user) { appendLog('No se pudo obtener info de usuario.'); document.getElementById('req-result').innerHTML = `<pre>${escapeHtml('No se pudo obtener info de usuario. Reintenta el login.')}</pre>`; return; }
+        const role = me.json.user.role;
+        if (role !== 'seller') { appendLog('Usuario no es seller. Crea perfil de vendedor o usa una cuenta seller.'); document.getElementById('req-result').innerHTML = `<pre>${escapeHtml('Usuario no tiene rol seller. Usa /api/seller/profile para crear perfil.')}</pre>`; return; }
+        // pick first available category
+        const cid = categoryFilter.value || (categoryFilter.options[1] && categoryFilter.options[1].value) || null;
+        if (!cid) { appendLog('No hay categoría disponible para asignar al producto.'); document.getElementById('req-result').innerHTML = `<pre>${escapeHtml('No hay categoría disponible. Crea una categoría primero.')}</pre>`; return; }
+        const mock = { title: 'Mock Product ' + Date.now(), description: 'Creado desde admin panel', status: 'active', categoryId: cid, variants: [{ sku: 'MOCK-'+Date.now(), priceCents: 1000, currency: 'USD' }], images: [] };
+        const r = await apiFetch('/api/products', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(mock) });
+        await showResult(r);
+        if (r.status >= 200 && r.status < 300) {
+          // refresh products so the created item shows up
+          await loadProducts();
+        }
+      });
+
+      document.getElementById('quick-9').addEventListener('click', async ()=>{
+        // try to use first category from select
+        const cid = categoryFilter.value || (categoryFilter.options[1] && categoryFilter.options[1].value) || '';
+        if (!cid) { appendLog('No category available'); return; }
+        const r = await apiFetch('/api/products?categoryId=' + encodeURIComponent(cid)); await showResult(r);
+      });
+
+      document.getElementById('quick-10').addEventListener('click', async ()=>{ const r = await apiFetch('/api/products?offset=2'); await showResult(r); });
+
+      // search debounce
+      let to = null; document.getElementById('search').addEventListener('input', ()=>{ clearTimeout(to); to = setTimeout(loadProducts, 350); });
+      categoryFilter.addEventListener('change', loadProducts);
+
+      // initial
+      (async function(){ await loadCategories(); await loadProducts(); appendLog('Panel cargado'); })();
+    </script>
+  </body>
+</html>

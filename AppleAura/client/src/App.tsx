@@ -36,7 +36,7 @@ function App() {
                 <Switch>
                   <Route path="/" component={Home} />
                   <Route path="/auth" component={Auth} />
-                  <Route path="/products/:slug" component={ProductDetail} />
+                  <Route path="/product/:id" component={ProductDetail} />
                   <Route path="/cart" component={Cart} />
                   <Route path="/seller/dashboard" component={SellerDashboard} />
                   <Route path="/admin/dashboard" component={AdminDashboard} />

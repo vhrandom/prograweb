@@ -35,7 +35,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    port: Number(process.env.FRONTEND_PORT || 5173),
+    port: Number(process.env.FRONTEND_PORT || 5000),
     proxy: {
       // Proxy /api requests to the backend server during development
       '/api': {

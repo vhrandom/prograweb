@@ -259,7 +259,7 @@ export default function Home() {
           
           <div className="border-t border-apple-gray-5 dark:border-apple-dark-3 mt-8 pt-8 text-center">
             <p className="text-footnote text-apple-gray-1">
-              © 2024 Silicon Trail. Todos los derechos reservados. | 
+              © 2025 Silicon Trail. Todos los derechos reservados. | 
               <a href="#" className="hover:text-apple-blue transition-colors"> Privacidad</a> | 
               <a href="#" className="hover:text-apple-blue transition-colors"> Términos</a>
             </p>

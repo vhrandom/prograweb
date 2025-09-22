@@ -104,9 +104,11 @@ export function Navigation() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-apple-blue to-tech-blue rounded-lg flex items-center justify-center">
-              <Zap className="w-5 h-5 text-white" />
-            </div>
+            <img
+            src="/images/logo.png"
+            alt="logo"
+            className="w-10 h-10 rounded-lg"
+            />
             <span className="text-title-2 font-semibold hidden sm:block">
               Silicon Trail
             </span>

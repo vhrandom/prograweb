@@ -4,7 +4,7 @@ import { Cpu, Smartphone, Gamepad2, Headphones, Home as HomeIcon, Truck } from "
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/product-card";
 import { useQuery } from "@tanstack/react-query";
-
+document.title = "Silicon Trail";
 export default function Home() {
   const [, setLocation] = useLocation();
   const [searchParams] = useState(() => new URLSearchParams(window.location.search));

@@ -1,0 +1,35 @@
+# Dependencias
+node_modules/
+
+# Compilados / builds
+dist/
+build/
+out/
+tmp/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# IDEs / editores
+.vscode/
+.idea/
+*.swp
+
+
+
+# Replit / Railway
+.replit
+replit.md
+.local/
+
+# Otros
+*.tgz
+*.zip

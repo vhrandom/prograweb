@@ -1,4 +1,4 @@
 ## Ejecución
-- Backend: `npm run dev`
-- Frontend: `npm run dev:client`
-- Backend + Frontend: `npm run dev:all`
+- Backend: `npm run start`
+- Frontend: `npm run start:client`
+- Backend + Frontend: `npm run start:all`

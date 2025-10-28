@@ -109,8 +109,16 @@ export class DatabaseStorage implements IStorage {
   // PRODUCTS
   async getProducts(filters?: any): Promise<Product[]> {
     const db = await connectMongo();
-    // (Lógica de filtros omitida por brevedad)
     const query: any = {};
+
+    if (filters?.search) {
+      const searchRegex = new RegExp(filters.search, "i"); // Búsqueda insensible a mayúsculas
+      query.$or = [
+        { title: searchRegex },
+        { description: searchRegex },
+      ];
+    }
+
     const products = await db.collection<Product>("products").find(query).toArray();
     return this._normalizeArray(products);
   }

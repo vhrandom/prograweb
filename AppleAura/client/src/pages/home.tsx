@@ -7,7 +7,9 @@ import { useQuery } from "@tanstack/react-query";
 document.title = "Silicon Trail";
 export default function Home() {
   const [, setLocation] = useLocation();
-  const [searchParams] = useState(() => new URLSearchParams(window.location.search));
+  // Lee la URL en cada renderizado.
+  // Así, si la URL cambia, searchQuery se recalcula.
+  const searchParams = new URLSearchParams(window.location.search);
   const searchQuery = searchParams.get("search") || "";
 
   const { data: products = [], isLoading } = useQuery({

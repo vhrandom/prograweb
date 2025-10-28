@@ -69,10 +69,13 @@ export interface ProductVariant {
 export type InsertProductVariant = Omit<ProductVariant, 'id'> & Partial<Pick<ProductVariant, 'id'>>;
 
 export interface CartItem {
-  id?: string;
+  id: string;
   userId: string;
+  productName: string;
   variantId: string;
   quantity: number;
+  productPrice: number;
+  productImage: string;
 }
 export type InsertCartItem = Omit<CartItem, 'id'> & Partial<Pick<CartItem, 'id'>>;
 

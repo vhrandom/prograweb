@@ -466,6 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const cartItems = await storage.getCartByUserId(req.user.id);
       res.json(cartItems);
+      console.log(cartItems)
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch cart", error });
     }

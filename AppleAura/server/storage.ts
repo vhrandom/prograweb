@@ -1,5 +1,3 @@
-
-
 import { MongoClient, Db, Collection, ObjectId } from "mongodb";
 import { User, InsertUser, SellerProfile, InsertSellerProfile, Category, Product, InsertProduct, ProductVariant, InsertProductVariant, Order, InsertOrder, OrderItem, Review, InsertReview, CartItem } from "../shared/schema";
 import { connectMongo } from "./mongo-connection";
@@ -168,7 +166,27 @@ export class DatabaseStorage implements IStorage {
   // CART (simplificado, puedes expandir según tu lógica)
   async getCartByUserId(userId: string): Promise<CartItem[]> {
     const db = await connectMongo();
-    return db.collection<CartItem>("cart_items").find({ userId }).toArray();
+
+    // Obtener los elementos del carrito
+    const cartItems = await db.collection<CartItem>("cart_items").find({ userId }).toArray();
+
+    // Enriquecer los datos con detalles de los productos y variantes
+    const enrichedCartItems = await Promise.all(
+      cartItems.map(async (item) => {
+        const product = await db.collection<Product>("products").findOne({ id: item.variantId });
+        const variant = await db.collection<ProductVariant>("product_variants").findOne({ id: item.variantId });
+
+        return {
+          ...item,
+          productName: product?.title || "Producto desconocido",
+          productPrice: variant ? variant.priceCents / 100 : 0,
+          productCurrency: variant?.currency || "USD",
+          productImage: product?.images[0] || "placeholder.jpg",
+        };
+      })
+    );
+
+    return enrichedCartItems;
   }
   async addToCart(userId: string, variantId: string, quantity: number): Promise<void> {
     const db = await connectMongo();

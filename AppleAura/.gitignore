@@ -1,5 +1,6 @@
 # Dependencias
 node_modules/
+client/node_modules
 pnpm*.yaml
 
 # Compilados / builds

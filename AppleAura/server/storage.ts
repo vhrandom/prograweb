@@ -119,6 +119,10 @@ export class DatabaseStorage implements IStorage {
       ];
     }
 
+    if (filters?.category) {
+      query.categoryId = filters.category;
+    }
+
     const products = await db.collection<Product>("products").find(query).toArray();
     return this._normalizeArray(products);
   }

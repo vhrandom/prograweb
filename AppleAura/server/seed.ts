@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
+import { InsertProduct } from "../shared/schema"; // Importar el tipo
 
 const SAMPLE_IMAGES = [
   "/images/products/macbook-pro-14.svg", // MacBook
@@ -16,10 +17,9 @@ async function seedDatabase() {
   console.log("🌱 Iniciando proceso de poblado de base de datos...");
 
   try {
-    // 1. Crear categorías - idempotente: no crear si ya existen
+    // 1. Crear categorías - idempotente
     console.log("📱 Creando categorías (si no existen)...");
     const existingCategories = await storage.getCategories();
-    const existingNames = new Set(existingCategories.map((c) => c.name.toLowerCase()));
 
     const desired = [
       { name: "Smartphones", description: "Teléfonos inteligentes de última generación", icon: "📱" },
@@ -40,7 +40,7 @@ async function seedDatabase() {
       }
     }
 
-    // 2. Crear usuarios de prueba con credenciales específicas (idempotente)
+    // 2. Crear usuarios de prueba (idempotente)
     let buyer = await storage.getUserByEmail("comprador@appleaura.com");
     if (!buyer) {
       buyer = await storage.createUser({
@@ -51,7 +51,6 @@ async function seedDatabase() {
       });
     }
 
-    // Vendedor
     let seller = await storage.getUserByEmail("vendedor@appleaura.com");
     if (!seller) {
       seller = await storage.createUser({
@@ -62,7 +61,6 @@ async function seedDatabase() {
       });
     }
 
-    // Administrador
     let admin = await storage.getUserByEmail("admin@appleaura.com");
     if (!admin) {
       admin = await storage.createUser({
@@ -92,7 +90,6 @@ async function seedDatabase() {
         title: "MacBook Pro 14 pulgadas",
         description: "La laptop más potente de Apple con chip M3 Pro para profesionales creativos",
         categoryId: categories[1].id, // Laptops
-        sellerId: sellerProfile.id,
         images: [SAMPLE_IMAGES[0]],
         status: "active" as const,
         specsJson: { processor: "M3 Pro", memory: "18GB", storage: "512GB SSD" }
@@ -101,7 +98,6 @@ async function seedDatabase() {
         title: "iPhone 15 Pro Max",
         description: "El iPhone más avanzado con cámara de 48MP y titanio aeroespacial",
         categoryId: categories[0].id, // Smartphones
-        sellerId: sellerProfile.id,
         images: [SAMPLE_IMAGES[1]],
         status: "active" as const,
         specsJson: { storage: "256GB", camera: "48MP", material: "Titanio" }
@@ -110,7 +106,6 @@ async function seedDatabase() {
         title: "iPad Pro 12.9 pulgadas",
         description: "La tablet más poderosa con chip M2 y pantalla Liquid Retina XDR",
         categoryId: categories[2].id, // Tablets
-        sellerId: sellerProfile.id,
         images: [SAMPLE_IMAGES[2]],
         status: "active" as const,
         specsJson: { processor: "M2", screen: "12.9 Liquid Retina XDR", storage: "128GB" }
@@ -119,7 +114,6 @@ async function seedDatabase() {
         title: "AirPods Pro (2da generación)",
         description: "Audífonos premium con cancelación activa de ruido y audio espacial",
         categoryId: categories[3].id, // Audio
-        sellerId: sellerProfile.id,
         images: [SAMPLE_IMAGES[3]],
         status: "active" as const,
         specsJson: { battery: "6 horas", features: "Cancelación de ruido, Audio espacial" }
@@ -128,7 +122,6 @@ async function seedDatabase() {
         title: "Apple Watch Series 9",
         description: "El reloj inteligente más avanzado con GPS y monitoreo de salud",
         categoryId: categories[4].id, // Smartwatch
-        sellerId: sellerProfile.id,
         images: [SAMPLE_IMAGES[4]],
         status: "active" as const,
         specsJson: { size: "45mm", connectivity: "GPS + Cellular", battery: "18 horas" }
@@ -136,46 +129,54 @@ async function seedDatabase() {
     ];
 
     const createdProducts = [];
-    for (const productData of products) {
-      // Generar slug igual que storage.createProduct para buscar existencia
-      const slug = productData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    
+    // --- BUCLE CORREGIDO ---
+    for (const productBaseData of products) {
+      const slug = productBaseData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       let product = await storage.getProductBySlug(slug);
+
       if (!product) {
-        // Attach sellerId/categoryId are already set in productData
-        const slug = productData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-        product = await storage.createProduct({ ...productData, slug });
+        
+        // 1. Prepara los datos del PRODUCTO (lo que va en la colección 'products')
+        const productData: InsertProduct = {
+          ...productBaseData,
+          sellerId: sellerProfile.id, // Añade el sellerId
+          slug: slug
+        };
+
+        // 2. Prepara los datos de la VARIANTE (lo que va en 'product_variants')
+        const variantData = {
+          sku: `${slug.substring(0, 10).toUpperCase()}-DEF`, // Un SKU de ejemplo
+          priceCents: Math.floor(Math.random() * 2000000) + 500000, // Precio aleatorio
+          stock: Math.floor(Math.random() * 50) + 10 // Stock aleatorio
+        };
+
+        // 3. Llama a 'createProduct' con AMBOS argumentos
+        product = await storage.createProduct(productData, variantData);
         createdProducts.push(product);
+        
       } else {
         createdProducts.push(product);
       }
 
-      // Crear variante para cada producto si no existen variantes
-      const variants = await storage.getVariantsByProductId(product.id);
-      if (!variants || variants.length === 0) {
-        await storage.createVariant({
-          productId: product.id,
-          sku: `${product.id}-DEFAULT`,
-          priceCents: Math.floor(Math.random() * 2000000) + 500000, // Entre $500k y $2.5M CLP
-          currency: "CLP",
-          attributesJson: { color: "Space Gray", size: "Standard" }
-        });
-      }
+      // 4. El bloque 'createVariant' que tenías aquí
+      //    ya no es necesario, porque 'createProduct' lo hace por ti.
     }
+    // --- FIN DEL BUCLE CORREGIDO ---
 
     console.log(`✅ Base de datos poblada exitosamente:`);
     console.log(`   👥 ${3} usuarios creados`);
     console.log(`   📁 ${categories.length} categorías creadas`);
     console.log(`   🏪 ${1} perfil de vendedor creado`);
-    console.log(`   📦 ${createdProducts.length} productos creados`);
-    console.log(`   💰 ${createdProducts.length} variantes de precio creadas`);
+    console.log(`   📦 ${createdProducts.length} productos creados (con sus variantes)`);
     console.log(`\n🔑 Credenciales de acceso creadas en credentials.md`);
 
   } catch (error) {
     console.error("❌ Error al poblar la base de datos:", error);
-    // No re-lanzar: hacer el seed tolerante para que el servidor arranque
   }
 }
 
+// Esta parte no cambia
 if (import.meta.url === `file://${process.argv[1]}`) {
   seedDatabase()
     .then(() => {

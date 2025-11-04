@@ -76,7 +76,7 @@ export function Navigation() {
         </DropdownMenuItem>
         {user?.role === "seller" && (
           <DropdownMenuItem asChild>
-            <Link href="/seller" className="flex items-center space-x-2">
+            <Link href="/seller/dashboard" className="flex items-center space-x-2">
               <Settings className="w-4 h-4" />
               <span>Panel de Vendedor</span>
             </Link>

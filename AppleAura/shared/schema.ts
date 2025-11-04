@@ -64,6 +64,7 @@ export interface ProductVariant {
   sku: string;
   priceCents: number;
   currency: string;
+  stock: number;
   attributesJson?: any;
 }
 export type InsertProductVariant = Omit<ProductVariant, 'id'> & Partial<Pick<ProductVariant, 'id'>>;

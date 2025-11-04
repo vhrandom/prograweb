@@ -89,6 +89,8 @@ export class DatabaseStorage implements IStorage {
   }
   // (updateSellerProfile se omitió por brevedad, aplicar misma lógica de updateUser)
 
+  
+
   // CATEGORIES
   async getCategories(): Promise<Category[]> {
     const db = await connectMongo();
@@ -109,22 +111,56 @@ export class DatabaseStorage implements IStorage {
   // PRODUCTS
   async getProducts(filters?: any): Promise<Product[]> {
     const db = await connectMongo();
+    const collection = db.collection<Product>("products");
+    
     const query: any = {};
-
     if (filters?.search) {
-      const searchRegex = new RegExp(filters.search, "i"); // Búsqueda insensible a mayúsculas
-      query.$or = [
-        { title: searchRegex },
-        { description: searchRegex },
-      ];
+      const searchRegex = new RegExp(filters.search, "i");
+      query.$or = [{ title: searchRegex }, { description: searchRegex }];
     }
-
     if (filters?.category) {
       query.categoryId = filters.category;
     }
+    if (filters?.sellerId) {
+      query.sellerId = filters.sellerId;
+    }
+    if (filters?.status) {
+      query.status = filters.status;
+    }
 
-    const products = await db.collection<Product>("products").find(query).toArray();
-    return this._normalizeArray(products);
+    const products = await collection.aggregate([
+      { $match: query }, 
+      {
+        $lookup: { 
+          from: "product_variants", 
+          localField: "id",          
+          foreignField: "productId", 
+          as: "variants"           
+        }
+      },
+      {
+        $addFields: {
+          firstVariant: { $first: "$variants" }, 
+        }
+      },
+      {
+        $addFields: {
+          // --- ¡AQUÍ ESTÁ LA NUEVA LÍNEA! ---
+          variantId: "$firstVariant.id", // <-- Promueve el ID de la variante
+          price: "$firstVariant.priceCents", 
+          stock: "$firstVariant.stock",
+          sku: "$firstVariant.sku"
+        }
+      },
+      {
+        $project: {
+          variants: 0,
+          firstVariant: 0
+        }
+      }
+    ]).toArray();
+
+    return this._normalizeArray(products as Product[]);
   }
   async getProductById(id: string): Promise<Product | undefined> {
     const db = await connectMongo();
@@ -135,13 +171,60 @@ export class DatabaseStorage implements IStorage {
     const product = await db.collection<Product>("products").findOne({ slug });
     return this._normalize(product);
   }
-  async createProduct(product: InsertProduct): Promise<Product> {
+  async createProduct(
+    productData: InsertProduct, 
+    variantData: { priceCents: number, sku: string, stock: number }
+  ): Promise<Product> {
+    
     const db = await connectMongo();
-    const doc = { ...product, id: product.id || new ObjectId().toString() };
-    await db.collection<Product>("products").insertOne(doc);
-    return doc as Product;
+    
+    // 1. Crear el documento base del Producto
+    const productDoc = { 
+      ...productData, 
+      id: productData.id || new ObjectId().toString() 
+    };
+    await db.collection<Product>("products").insertOne(productDoc);
+
+    // 2. Crear la primera Variante usando el ID del producto
+    //    (Asumimos una moneda por defecto, ajústala si es necesario)
+    const newVariant: InsertProductVariant = {
+      productId: productDoc.id, // <-- Enlaza al producto
+      priceCents: variantData.priceCents,
+      sku: variantData.sku,
+      stock: variantData.stock,
+      currency: "CLP", // O tómalo del frontend si es variable
+      attributesJson: {}
+    };
+
+    // 3. Llama a tu función createVariant existente
+    await this.createVariant(newVariant);
+
+    // 4. Devuelve el Producto principal que se creó
+    return productDoc as Product;
   }
-  // (updateProduct omitido, aplicar misma lógica de updateUser)
+
+
+  
+
+  // updateProduct 
+  async updateProduct(id: string, updates: Partial<Product>): Promise<Product | undefined> {
+    const db = await connectMongo();
+    const collection = db.collection<Product>("products");
+    
+    // 1. Encontrar el documento usando tu helper
+    const doc = await this._findById(collection, id);
+    if (!doc) return undefined;
+
+    // 2. Quitar 'id' y '_id' de los updates por si acaso
+    delete updates.id;
+    delete (updates as any)._id;
+    
+    // 3. Usar el _id real para la actualización
+    await collection.updateOne({ _id: doc._id }, { $set: updates });
+
+    // 4. Devolver el documento actualizado y normalizado
+    return this._findById(collection, id);
+  } 
 
   async deleteProduct(id: string): Promise<void> {
     const db = await connectMongo();
@@ -167,7 +250,72 @@ export class DatabaseStorage implements IStorage {
     return doc as ProductVariant;
   }
 
+
+
+
+
+  async getSellerStats(sellerId: string): Promise<any> {
+    const db = await connectMongo();
+    const productCollection = db.collection<Product>("products");
+    const orderCollection = db.collection<Order>("orders");
+
+    // Hacemos las 4 consultas en paralelo para mayor eficiencia
+    const [
+      totalProducts,
+      totalOrders,
+      pendingOrders,
+      revenueResult
+    ] = await Promise.all([
+
+      // 1. Total Productos
+      productCollection.countDocuments({ sellerId }),
+
+      // 2. Órdenes Totales
+      orderCollection.countDocuments({ sellerId }),
+
+      // 3. Órdenes Pendientes
+      // (Asumimos que el estado se llama 'pending')
+      orderCollection.countDocuments({ sellerId, status: "pending" }),
+
+      // 4. Ingresos Totales (Usando un pipeline de agregación)
+      // (Asumimos que solo contamos órdenes 'delivered' y el campo es 'total')
+      orderCollection.aggregate([
+        { 
+          $match: { 
+            sellerId: sellerId,
+            status: "delivered" 
+          } 
+        },
+        { 
+          $group: { 
+            _id: null, // Agrupar todos los resultados
+            totalRevenue: { $sum: "$total" } // Sumar el campo 'total'
+          } 
+        }
+      ]).toArray()
+      
+    ]);
+
+    // Extraemos el valor de la agregación (viene en un array)
+    const totalRevenue = revenueResult[0]?.totalRevenue || 0;
+
+    return {
+      totalProducts,
+      totalOrders,
+      pendingOrders,
+      totalRevenue 
+    };
+  }
+
+
+
   // (Orders y Reviews omitidos por brevedad)
+  async getOrdersBySellerId(sellerId: string): Promise<Order[]> {
+    const db = await connectMongo();
+    // Asumimos que la colección 'orders' tiene un campo 'sellerId'
+    const orders = await db.collection<Order>("orders").find({ sellerId }).sort({ createdAt: -1 }).toArray();
+    return this._normalizeArray(orders);
+  }
 
   // CART (La parte más importante)
   async getCartByUserId(userId: string): Promise<CartItem[]> {

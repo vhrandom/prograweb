@@ -206,21 +206,11 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
+              {/* --- AQUÍ ESTÁ LA CORRECCIÓN --- */}
               {products.map((product: any) => (
                 <ProductCard
                   key={product.id}
-                  product={{
-                    ...product,
-                    rating: 4.8,
-                    reviewCount: 127,
-                    seller: {
-                      displayName: "TechStore Pro",
-                      location: "Las Condes, 2.5km"
-                    },
-                    trending: Math.random() > 0.7,
-                    freeShipping: Math.random() > 0.5,
-                    stock: Math.floor(Math.random() * 20) + 1,
-                  }}
+                  product={product} 
                   onView={handleProductView}
                 />
               ))}

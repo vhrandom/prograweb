@@ -32,7 +32,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const response = await fetch("/api/cart", {
         headers: authService.getAuthHeaders(),
       });
-
       if (response.ok) {
         const cartItems = await response.json();
         setItems(cartItems);

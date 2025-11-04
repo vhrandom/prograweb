@@ -1,21 +1,41 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+// 1. Importa useSearch ADEMÁS de useLocation
+import { useLocation, useSearch } from "wouter";
 import { Cpu, Smartphone, Gamepad2, Headphones, Home as HomeIcon, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/product-card";
 import { useQuery } from "@tanstack/react-query";
+
 document.title = "Silicon Trail";
+
 export default function Home() {
   const [, setLocation] = useLocation();
-  const [searchParams] = useState(() => new URLSearchParams(window.location.search));
-  const searchQuery = searchParams.get("search") || "";
 
+  // 2. ELIMINA el useState y el MutationObserver
+  //    REEMPLÁZALO por esto:
+  const searchString = useSearch(); // <-- Este hook SÍ "escucha" la URL
+  const searchParams = new URLSearchParams(searchString);
+  const searchQuery = searchParams.get("search") || "";
+  // (Puedes hacer lo mismo para otros filtros: const brand = searchParams.get("brand") || "Todas")
+
+  // 3. CORRIGE useQuery para que lea desde el queryKey
   const { data: products = [], isLoading } = useQuery({
+    // El queryKey está perfecto, depende del 'searchQuery' reactivo
     queryKey: ["/api/products", { search: searchQuery, limit: 20 }],
-    queryFn: async () => {
+    
+    // Hacemos que la queryFn lea sus parámetros DESDE el queryKey
+    // para evitar "closures" o valores "rancios".
+    queryFn: async ({ queryKey }) => {
+      // queryKey[1] es el objeto { search: "...", limit: ... }
+      const [, queryParams] = queryKey as [string, { search: string; limit: number }];
+      
       const params = new URLSearchParams();
-      if (searchQuery) params.append("search", searchQuery);
-      params.append("limit", "20");
+      
+      // Usamos queryParams.search, NO la variable 'searchQuery' de afuera
+      if (queryParams.search) {
+        params.append("search", queryParams.search);
+      }
+      params.append("limit", (queryParams.limit || 20).toString());
       
       const response = await fetch(`/api/products?${params}`);
       if (!response.ok) throw new Error("Failed to fetch products");
@@ -27,6 +47,9 @@ export default function Home() {
   useEffect(() => {
     console.log("[Home] products:", products, "isLoading:", isLoading, "searchQuery:", searchQuery);
   }, [products, isLoading, searchQuery]);
+
+  // ... EL RESTO DE TU CÓDIGO (quickFilters, return...) ...
+  // ... NO NECESITA CAMBIOS ...
 
   const quickFilters = [
     { icon: Cpu, label: "💻 Computación", filter: "computacion" },
@@ -183,21 +206,11 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
+              {/* --- AQUÍ ESTÁ LA CORRECCIÓN --- */}
               {products.map((product: any) => (
                 <ProductCard
                   key={product.id}
-                  product={{
-                    ...product,
-                    rating: 4.8,
-                    reviewCount: 127,
-                    seller: {
-                      displayName: "TechStore Pro",
-                      location: "Las Condes, 2.5km"
-                    },
-                    trending: Math.random() > 0.7,
-                    freeShipping: Math.random() > 0.5,
-                    stock: Math.floor(Math.random() * 20) + 1,
-                  }}
+                  product={product} 
                   onView={handleProductView}
                 />
               ))}

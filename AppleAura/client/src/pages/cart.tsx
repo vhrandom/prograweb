@@ -60,7 +60,12 @@ export default function Cart() {
     }
   };
 
-  const subtotal = 0; // Would calculate from item prices
+  const subtotal = items.reduce((acc, item) => {
+    // item.productPrice es 707041 (centavos)
+    // item.quantity es 1
+    return acc + (item.productPrice * item.quantity);
+  }, 0); // acc (acumulador) empieza en 0
+
   const shipping = 0; // Free shipping
   const total = subtotal + shipping;
 
@@ -131,19 +136,21 @@ export default function Cart() {
                 >
                   <div className="flex items-center space-x-4">
                     {/* Product Image Placeholder */}
-                    <div className="w-20 h-20 bg-apple-gray-4 dark:bg-apple-dark-4 rounded-lg flex items-center justify-center">
-                      <span className="text-caption-1 text-apple-gray-1">IMG</span>
-                    </div>
+                    <img 
+                      src={item.productImage} 
+                      alt={item.productName} 
+                      className="w-20 h-20 rounded-lg object-cover border border-apple-gray-5 dark:border-apple-dark-3" 
+                    />
                     
                     <div className="flex-1">
                       <h3 className="text-headline font-semibold text-gray-900 dark:text-white mb-1">
-                        Producto {item.variantId.slice(0, 8)}
+                        Producto {item.productName}
                       </h3>
                       <p className="text-footnote text-apple-gray-1 mb-2">
                         SKU: {item.variantId}
                       </p>
                       <p className="text-body font-semibold text-apple-blue dark:text-apple-blue-dark">
-                        {formatPrice(0)} {/* Would show actual price */}
+                         {formatPrice(item.productPrice)} 
                       </p>
                     </div>
                     

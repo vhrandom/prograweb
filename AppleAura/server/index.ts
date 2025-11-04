@@ -39,50 +39,17 @@ app.use(express.urlencoded({ extended: false }));
 // -----------------------------------------------------------------------------
 app.use((req, res, next) => {
   const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson: any, ...args: any[]) {
-    capturedJsonResponse = bodyJson;
-    // @ts-expect-error - mantener la firma original de express
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on('finish', () => {
+  const originalJson = res.json;
+  res.json = function (body) {
     const duration = Date.now() - start;
-    if (path.startsWith('/api')) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        try {
-          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-        } catch {
-          // ignora si no se puede serializar
-        }
-      }
-      if (logLine.length > 80) logLine = logLine.slice(0, 79) + '…';
-      log(logLine);
-    }
-  });
-
+    log(`${req.method} ${req.originalUrl} - ${res.statusCode} - ${duration}ms`);
+    return originalJson.call(this, body);
+  };
   next();
 });
 
-// -----------------------------------------------------------------------------
-// Swagger UI
-// -----------------------------------------------------------------------------
-// Swagger UI: evitar mismatch de tipos entre distintas copias de @types/express casteando
-app.use(
-  '/api-docs',
-  (swaggerUi as any).serve,
-  (swaggerUi as any).setup(swaggerSpec, {
-    customSiteTitle: 'AppleAura API Documentation',
-    customCss: '.swagger-ui .topbar { display: none }',
-    customfavIcon: '/favicon.ico',
-  })
-);
-
-// JSON de la especificación
+// Swagger docs
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/api-docs.json', (_req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
@@ -112,37 +79,18 @@ app.get('/api-docs.json', (_req, res) => {
     }
   });
 
-  // En desarrollo: solo API; en producción: estáticos
-  // En producción podrías servir estáticos aquí si lo necesitas
   // Montar admin UI de forma robusta usando la ruta del fichero actual
-  try {
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const adminBuildPath = path.join(__dirname, "../client/dist");
 
-    const candidates = [
-      path.resolve(process.cwd(), 'server', 'admin'),
-      path.resolve(process.cwd(), 'admin'),
-      path.resolve(__dirname, 'admin'),
-      path.resolve(__dirname, '..', 'server', 'admin'),
-      path.resolve(__dirname, '..', 'admin'),
-    ];
-
-    let adminPath: string | null = null;
-    for (const c of candidates) {
-      if (fs.existsSync(c)) {
-        adminPath = c;
-        break;
-      }
-    }
-
-    if (adminPath) {
-      app.use('/admin', express.static(adminPath));
-      app.get('/admin', (_req, res) => res.sendFile(path.join(adminPath!, 'index.html')));
-      log(`Admin UI servida en /admin desde ${adminPath}`);
-    } else {
-      log('Admin UI no encontrada. Rutas comprobadas:\n' + candidates.join('\n'));
-    }
-  } catch (e) {
-    log('Error montando /admin: ' + String(e));
+  if (fs.existsSync(adminBuildPath)) {
+    app.use("/admin", express.static(adminBuildPath));
+    app.get("/admin/*", (_req, res) => {
+      res.sendFile(path.join(adminBuildPath, "index.html"));
+    });
+    log(`Admin UI servida en /admin desde ${adminBuildPath}`);
+  } else {
+    log(`Advertencia: La carpeta de build del admin UI no se encontró en ${adminBuildPath}. Asegúrate de ejecutar 'pnpm run build' en client/`);
   }
 
   // ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 # Dependencias
 node_modules/
-*/node_modules
 pnpm*.yaml
+AppleAura/client/node_modules
 
 # Compilados / builds
 dist/

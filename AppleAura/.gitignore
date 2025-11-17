@@ -35,3 +35,4 @@ replit.md
 # Otros
 *.tgz
 *.zip
+.env

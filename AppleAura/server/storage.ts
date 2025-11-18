@@ -1,16 +1,65 @@
 import { MongoClient, Db, Collection, ObjectId } from "mongodb";
-import { User, InsertUser, SellerProfile, InsertSellerProfile, Category, Product, InsertProduct, ProductVariant, InsertProductVariant, Order, InsertOrder, OrderItem, Review, InsertReview, CartItem } from "../shared/schema";
+// --- MUNDO 1: SQL (Exclusivo para Usuarios) ---
+import { dbSql } from "./sql";
+import { users } from "shared/schema-sqlite"; 
+import { eq } from "drizzle-orm";
+// ---------------------------------------------
+
+// --- INTERFACES DE LA APP (Contrato común) ---
+import { 
+  User, InsertUser, 
+  SellerProfile, InsertSellerProfile, 
+  Category, Product, InsertProduct, 
+  ProductVariant, InsertProductVariant, 
+  Order, InsertOrder, OrderItem, 
+  Review, InsertReview, CartItem 
+} from "../shared/schema"; 
+
 import { connectMongo } from "./mongo-connection";
 
-// Define un tipo base que esperamos de Mongo
 type MongoDoc = { id?: string, _id?: ObjectId };
+
+// Definición estricta de métodos
+export interface IStorage {
+  // --- ÁREA SQL ---
+  getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
+
+  // --- ÁREA MONGO ---
+  getSellerProfile(userId: string): Promise<SellerProfile | undefined>;
+  createSellerProfile(profile: InsertSellerProfile): Promise<SellerProfile>;
+  getCategories(): Promise<Category[]>;
+  getCategoryById(id: string): Promise<Category | undefined>;
+  createCategory(category: any): Promise<Category>;
+  getProducts(filters?: any): Promise<Product[]>;
+  getProductById(id: string): Promise<Product | undefined>;
+  getProductBySlug(slug: string): Promise<Product | undefined>;
+  createProduct(product: InsertProduct, variantData: { priceCents: number, sku: string, stock: number }): Promise<Product>;
+  updateProduct(id: string, updates: Partial<Product>): Promise<Product | undefined>;
+  deleteProduct(id: string): Promise<void>;
+  getVariantsByProductId(productId: string): Promise<ProductVariant[]>;
+  getVariantById(id: string): Promise<ProductVariant | undefined>;
+  createVariant(variant: InsertProductVariant): Promise<ProductVariant>;
+  getCartByUserId(userId: string): Promise<CartItem[]>;
+  addToCart(userId: string, variantId: string, quantity: number): Promise<void>;
+  updateCartItem(userId: string, variantId: string, quantity: number): Promise<void>;
+  removeFromCart(userId: string, variantId: string): Promise<void>;
+  clearCart(userId: string): Promise<void>;
+  getOrdersBySellerId(sellerId: string): Promise<Order[]>;
+  getOrdersByUserId(userId: string): Promise<Order[]>;
+  createOrder(order: InsertOrder): Promise<Order>;
+  getReviewsByProductId(productId: string): Promise<Review[]>;
+  createReview(review: InsertReview): Promise<Review>;
+  getSellerStats(sellerId: string): Promise<any>;
+}
 
 export class DatabaseStorage implements IStorage {
 
-  /**
-   * Normaliza un documento de Mongo para asegurar que tenga un campo 'id' (string)
-   * compatible con la app, usando '_id' como fallback si 'id' falta.
-   */
+  // -------------------------------------------------------------------------
+  // HELPERS (Solo para MongoDB)
+  // -------------------------------------------------------------------------
   private _normalize<T extends MongoDoc>(doc: T | null | undefined): T | undefined {
     if (doc && !doc.id && doc._id) {
       doc.id = doc._id.toString();
@@ -18,64 +67,128 @@ export class DatabaseStorage implements IStorage {
     return doc ?? undefined;
   }
 
-  /**
-   * Normaliza un array de documentos.
-   */
   private _normalizeArray<T extends MongoDoc>(docs: T[]): T[] {
     return docs.map(doc => this._normalize(doc)).filter(Boolean) as T[];
   }
 
-  /**
-   * Helper privado para buscar por 'id' (string) o '_id' (ObjectId)
-   * y normalizar la salida.
-   */
   private async _findById<T extends MongoDoc>(
     collection: Collection<T>,
     id: string
   ): Promise<T | undefined> {
     if (!id || typeof id !== 'string') return undefined;
-
-    // 1. Intentar buscar por el 'id' string (preferido por la app)
     let doc = await collection.findOne({ id: id } as any);
-
-    // 2. Fallback: Si no se encuentra Y el 'id' es un ObjectId válido, búscalo por '_id'.
     if (!doc && ObjectId.isValid(id)) {
       doc = await collection.findOne({ _id: new ObjectId(id) } as any);
     }
-
-    // 3. Normalizar el documento (asegura que doc.id exista)
     return this._normalize(doc);
   }
 
-  // USERS
+  // =========================================================================
+  // ZONA SQL (SQLite) - EXCLUSIVO PARA USUARIOS
+  // =========================================================================
+  
   async getUser(id: string): Promise<User | undefined> {
-    const db = await connectMongo();
-    return this._findById(db.collection<User>("users"), id);
-  }
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    const db = await connectMongo();
-    const user = await db.collection<User>("users").findOne({ email });
-    return this._normalize(user);
-  }
-  async createUser(user: InsertUser): Promise<User> {
-    const db = await connectMongo();
-    const doc = { ...user, id: user.id || new ObjectId().toString() };
-    await db.collection<User>("users").insertOne(doc);
-    return doc as User;
-  }
-  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
-    const db = await connectMongo();
-    const collection = db.collection<User>("users");
-    // Usamos el helper para encontrar el doc por cualquier ID
-    const doc = await this._findById(collection, id);
-    if (!doc) return undefined;
-    
-    // Usamos el _id real para la actualización
-    await collection.updateOne({ _id: doc._id }, { $set: updates });
-    return this._findById(collection, id);
+    try {
+      const idNum = parseInt(id);
+      if (isNaN(idNum)) return undefined;
+
+      // Consulta a SQLite
+      const result = dbSql.select().from(users).where(eq(users.id, idNum)).all();
+      
+      if (result.length === 0) return undefined;
+      const u = result[0];
+      
+      // ADAPTADOR: SQL -> APP
+      return {
+        id: u.id.toString(), // Convertimos ID numérico a string
+        email: u.email,
+        passwordHash: u.passwordHash,
+        role: u.role as any,
+        name: u.name || "Usuario",
+        // TRUCO: Convertimos Date a Number para satisfacer a la App
+        createdAt: u.createdAt ? u.createdAt.getTime() : Date.now()
+      };
+    } catch (error) {
+      console.error("Error SQLite getUser:", error);
+      return undefined;
+    }
   }
 
-  // SELLER PROFILES
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    try {
+      const result = dbSql.select().from(users).where(eq(users.email, email)).all();
+      
+      if (result.length === 0) return undefined;
+      const u = result[0];
+
+      return {
+        id: u.id.toString(),
+        email: u.email,
+        passwordHash: u.passwordHash,
+        role: u.role as any,
+        name: u.name || "Usuario",
+        createdAt: u.createdAt ? u.createdAt.getTime() : Date.now()
+      };
+    } catch (error) {
+      console.error("Error SQLite getUserByEmail:", error);
+      return undefined;
+    }
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    // Insertamos en SQLite
+    const result = dbSql.insert(users).values({
+      email: insertUser.email,
+      passwordHash: insertUser.passwordHash,
+      role: insertUser.role || "buyer",
+      name: insertUser.name || insertUser.email.split('@')[0],
+      createdAt: new Date()
+    }).returning().get();
+
+    return {
+      id: result.id.toString(),
+      email: result.email,
+      passwordHash: result.passwordHash,
+      role: result.role as any,
+      name: result.name || "Usuario",
+      createdAt: result.createdAt ? result.createdAt.getTime() : Date.now()
+    };
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
+    const idNum = parseInt(id);
+    if (isNaN(idNum)) return undefined;
+
+    const sqlUpdates: any = {};
+    if (updates.role) sqlUpdates.role = updates.role;
+    if (updates.name) sqlUpdates.name = updates.name;
+    if (updates.passwordHash) sqlUpdates.passwordHash = updates.passwordHash;
+
+    if (Object.keys(sqlUpdates).length === 0) return this.getUser(id);
+
+    const result = dbSql.update(users)
+      .set(sqlUpdates)
+      .where(eq(users.id, idNum))
+      .returning()
+      .get();
+
+    if (!result) return undefined;
+    
+    return { 
+        id: result.id.toString(), 
+        email: result.email, 
+        passwordHash: result.passwordHash,
+        role: result.role as any, 
+        name: result.name || "",
+        createdAt: result.createdAt ? result.createdAt.getTime() : Date.now()
+    };
+  }
+
+  // =========================================================================
+  // ZONA MONGODB - TODO LO DEMÁS (Productos, Carrito, etc.)
+  // =========================================================================
+  
+  // Seller Profiles (Aunque se relacionan con User, se guardan en Mongo por flexibilidad)
   async getSellerProfile(userId: string): Promise<SellerProfile | undefined> {
     const db = await connectMongo();
     const profile = await db.collection<SellerProfile>("seller_profiles").findOne({ userId });
@@ -87,11 +200,8 @@ export class DatabaseStorage implements IStorage {
     await db.collection<SellerProfile>("seller_profiles").insertOne(doc);
     return doc as SellerProfile;
   }
-  // (updateSellerProfile se omitió por brevedad, aplicar misma lógica de updateUser)
 
-  
-
-  // CATEGORIES
+  // Categorías
   async getCategories(): Promise<Category[]> {
     const db = await connectMongo();
     const categories = await db.collection<Category>("categories").find().toArray();
@@ -108,25 +218,18 @@ export class DatabaseStorage implements IStorage {
     return doc as Category;
   }
 
-  // PRODUCTS
+  // Productos (El corazón de Mongo)
   async getProducts(filters?: any): Promise<Product[]> {
     const db = await connectMongo();
     const collection = db.collection<Product>("products");
-    
     const query: any = {};
     if (filters?.search) {
       const searchRegex = new RegExp(filters.search, "i");
       query.$or = [{ title: searchRegex }, { description: searchRegex }];
     }
-    if (filters?.category) {
-      query.categoryId = filters.category;
-    }
-    if (filters?.sellerId) {
-      query.sellerId = filters.sellerId;
-    }
-    if (filters?.status) {
-      query.status = filters.status;
-    }
+    if (filters?.category) query.categoryId = filters.category;
+    if (filters?.sellerId) query.sellerId = filters.sellerId;
+    if (filters?.status) query.status = filters.status;
 
     const products = await collection.aggregate([
       { $match: query }, 
@@ -138,30 +241,21 @@ export class DatabaseStorage implements IStorage {
           as: "variants"           
         }
       },
+      { $addFields: { firstVariant: { $first: "$variants" } } },
       {
         $addFields: {
-          firstVariant: { $first: "$variants" }, 
-        }
-      },
-      {
-        $addFields: {
-          // --- ¡AQUÍ ESTÁ LA NUEVA LÍNEA! ---
-          variantId: "$firstVariant.id", // <-- Promueve el ID de la variante
+          variantId: "$firstVariant.id",
           price: "$firstVariant.priceCents", 
           stock: "$firstVariant.stock",
           sku: "$firstVariant.sku"
         }
       },
-      {
-        $project: {
-          variants: 0,
-          firstVariant: 0
-        }
-      }
+      { $project: { variants: 0, firstVariant: 0 } }
     ]).toArray();
 
     return this._normalizeArray(products as Product[]);
   }
+
   async getProductById(id: string): Promise<Product | undefined> {
     const db = await connectMongo();
     return this._findById(db.collection<Product>("products"), id);
@@ -171,69 +265,41 @@ export class DatabaseStorage implements IStorage {
     const product = await db.collection<Product>("products").findOne({ slug });
     return this._normalize(product);
   }
-  async createProduct(
-    productData: InsertProduct, 
-    variantData: { priceCents: number, sku: string, stock: number }
-  ): Promise<Product> {
-    
+  async createProduct(productData: InsertProduct, variantData: { priceCents: number, sku: string, stock: number }): Promise<Product> {
     const db = await connectMongo();
-    
-    // 1. Crear el documento base del Producto
-    const productDoc = { 
-      ...productData, 
-      id: productData.id || new ObjectId().toString() 
-    };
+    const productDoc = { ...productData, id: productData.id || new ObjectId().toString() };
     await db.collection<Product>("products").insertOne(productDoc);
 
-    // 2. Crear la primera Variante usando el ID del producto
-    //    (Asumimos una moneda por defecto, ajústala si es necesario)
     const newVariant: InsertProductVariant = {
-      productId: productDoc.id, // <-- Enlaza al producto
+      productId: productDoc.id,
       priceCents: variantData.priceCents,
       sku: variantData.sku,
       stock: variantData.stock,
-      currency: "CLP", // O tómalo del frontend si es variable
+      currency: "CLP",
       attributesJson: {}
     };
-
-    // 3. Llama a tu función createVariant existente
     await this.createVariant(newVariant);
-
-    // 4. Devuelve el Producto principal que se creó
     return productDoc as Product;
   }
-
-
-  
-
-  // updateProduct 
   async updateProduct(id: string, updates: Partial<Product>): Promise<Product | undefined> {
     const db = await connectMongo();
     const collection = db.collection<Product>("products");
-    
-    // 1. Encontrar el documento usando tu helper
     const doc = await this._findById(collection, id);
     if (!doc) return undefined;
 
-    // 2. Quitar 'id' y '_id' de los updates por si acaso
     delete updates.id;
     delete (updates as any)._id;
     
-    // 3. Usar el _id real para la actualización
     await collection.updateOne({ _id: doc._id }, { $set: updates });
-
-    // 4. Devolver el documento actualizado y normalizado
     return this._findById(collection, id);
   } 
-
   async deleteProduct(id: string): Promise<void> {
     const db = await connectMongo();
-    // (Esta lógica está bien, asume 'id' string)
     await db.collection("product_variants").deleteMany({ productId: id });
     await db.collection("products").deleteOne({ id });
   }
 
-  // PRODUCT VARIANTS
+  // Variantes
   async getVariantsByProductId(productId: string): Promise<ProductVariant[]> {
     const db = await connectMongo();
     const variants = await db.collection<ProductVariant>("product_variants").find({ productId }).toArray();
@@ -250,94 +316,70 @@ export class DatabaseStorage implements IStorage {
     return doc as ProductVariant;
   }
 
-
-
-
-
+  // Estadísticas
   async getSellerStats(sellerId: string): Promise<any> {
     const db = await connectMongo();
     const productCollection = db.collection<Product>("products");
     const orderCollection = db.collection<Order>("orders");
 
-    // Hacemos las 4 consultas en paralelo para mayor eficiencia
-    const [
-      totalProducts,
-      totalOrders,
-      pendingOrders,
-      revenueResult
-    ] = await Promise.all([
-
-      // 1. Total Productos
+    const [totalProducts, totalOrders, pendingOrders, revenueResult] = await Promise.all([
       productCollection.countDocuments({ sellerId }),
-
-      // 2. Órdenes Totales
       orderCollection.countDocuments({ sellerId }),
-
-      // 3. Órdenes Pendientes
-      // (Asumimos que el estado se llama 'pending')
       orderCollection.countDocuments({ sellerId, status: "pending" }),
-
-      // 4. Ingresos Totales (Usando un pipeline de agregación)
-      // (Asumimos que solo contamos órdenes 'delivered' y el campo es 'total')
       orderCollection.aggregate([
-        { 
-          $match: { 
-            sellerId: sellerId,
-            status: "delivered" 
-          } 
-        },
-        { 
-          $group: { 
-            _id: null, // Agrupar todos los resultados
-            totalRevenue: { $sum: "$total" } // Sumar el campo 'total'
-          } 
-        }
+        { $match: { sellerId: sellerId, status: "delivered" } },
+        { $group: { _id: null, totalRevenue: { $sum: "$total" } } }
       ]).toArray()
-      
     ]);
-
-    // Extraemos el valor de la agregación (viene en un array)
     const totalRevenue = revenueResult[0]?.totalRevenue || 0;
-
-    return {
-      totalProducts,
-      totalOrders,
-      pendingOrders,
-      totalRevenue 
-    };
+    return { totalProducts, totalOrders, pendingOrders, totalRevenue };
   }
 
-
-
-  // (Orders y Reviews omitidos por brevedad)
+  // Órdenes
   async getOrdersBySellerId(sellerId: string): Promise<Order[]> {
     const db = await connectMongo();
-    // Asumimos que la colección 'orders' tiene un campo 'sellerId'
     const orders = await db.collection<Order>("orders").find({ sellerId }).sort({ createdAt: -1 }).toArray();
     return this._normalizeArray(orders);
   }
+  async getOrdersByUserId(userId: string): Promise<Order[]> {
+    const db = await connectMongo();
+    const orders = await db.collection<Order>("orders").find({ userId }).toArray();
+    return this._normalizeArray(orders);
+  }
+  async createOrder(order: InsertOrder): Promise<Order> {
+    const db = await connectMongo();
+    const doc = { ...order, id: order.id || new ObjectId().toString() };
+    await db.collection<Order>("orders").insertOne(doc);
+    return doc as Order;
+  }
 
-  // CART (La parte más importante)
+  // Reseñas
+   async getReviewsByProductId(productId: string): Promise<Review[]> {
+    const db = await connectMongo();
+    const reviews = await db.collection<Review>("reviews").find({ productId }).toArray();
+    return this._normalizeArray(reviews);
+  }
+  async createReview(review: InsertReview): Promise<Review> {
+    const db = await connectMongo();
+    const doc = { ...review, id: review.id || new ObjectId().toString() };
+    await db.collection<Review>("reviews").insertOne(doc);
+    return doc as Review;
+  }
+
+  // Carrito
   async getCartByUserId(userId: string): Promise<CartItem[]> {
     const db = await connectMongo();
     const cartItems = await db.collection<CartItem>("cart_items").find({ userId }).toArray();
 
-    // Enriquecer los datos
     const enrichedCartItems = await Promise.all(
       cartItems.map(async (item) => {
-        
-        // --- INICIO DE LA CORRECCIÓN ---
-        // Ahora usamos las funciones del storage (que tienen el fallback)
         const variant = await this.getVariantById(item.variantId);
         const product = variant ? await this.getProductById(variant.productId) : null;
-        // --- FIN DE LA CORRECCIÓN ---
-
         const sku = variant?.sku || item.variantId;
         const productName = product?.title || `Producto ${item.variantId.substring(0, 8)}`;
 
         return {
           ...item,
-          // Normalizamos los datos que vio el frontend
           productName: productName,
           sku: sku,
           productPrice: variant ? variant.priceCents : 0,
@@ -346,11 +388,8 @@ export class DatabaseStorage implements IStorage {
         };
       })
     );
-
     return enrichedCartItems;
   }
-  
-  // (Resto de funciones del carrito omitidas)
   async addToCart(userId: string, variantId: string, quantity: number): Promise<void> {
     const db = await connectMongo();
     await db.collection<CartItem>("cart_items").updateOne(

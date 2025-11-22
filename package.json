@@ -1,0 +1,9 @@
+{
+	"dependencies": {
+		"better-sqlite3": "^12.4.1",
+		"mongodb": "^6.20.0"
+	},
+	"devDependencies": {
+		"@types/better-sqlite3": "^7.6.13"
+	}
+}

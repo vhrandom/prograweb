@@ -80,18 +80,23 @@ app.get('/api-docs.json', (_req, res) => {
     }
   });
 
-  // Montar admin UI de forma robusta usando la ruta del fichero actual
+  // Serve static files from the build directory
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const adminBuildPath = path.join(__dirname, "../client/dist");
+  // The build output is in dist/public (configured in vite.config.ts)
+  const publicPath = path.join(__dirname, "../dist/public");
 
-  if (fs.existsSync(adminBuildPath)) {
-    app.use("/admin", express.static(adminBuildPath));
-    app.get("/admin/*", (_req, res) => {
-      res.sendFile(path.join(adminBuildPath, "index.html"));
+  if (fs.existsSync(publicPath)) {
+    // Serve static files
+    app.use(express.static(publicPath));
+
+    // SPA fallback: serve index.html for any unknown route (except /api)
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith("/api")) return next();
+      res.sendFile(path.join(publicPath, "index.html"));
     });
-    log(`Admin UI servida en /admin desde ${adminBuildPath}`);
+    log(`Frontend served from ${publicPath}`);
   } else {
-    log(`Advertencia: La carpeta de build del admin UI no se encontró en ${adminBuildPath}. Asegúrate de ejecutar 'pnpm run build' en client/`);
+    log(`Warning: Frontend build not found at ${publicPath}. Run 'npm run build' to generate it.`);
   }
 
   // ---------------------------------------------------------------------------

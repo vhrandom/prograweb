@@ -255,11 +255,11 @@ export default function Home() {
                     // Let's check ProductCard. usually it expects cents if it formats it, or we format it here.
                     // storage.ts aggregation: price: "$firstVariant.priceCents"
                     // So product.price is in cents.
-                    rating: product.averageRating || 0,
-                    reviewCount: product.reviewCount || 0, // We don't have review count in aggregation yet, default to 0 or fetch
+                    rating: product.rating || 0,
+                    reviewCount: product.reviewCount || 0,
                     seller: {
-                      displayName: product.sellerName || "Vendedor",
-                      location: product.sellerLocation || "Santiago, Chile"
+                      displayName: product.seller?.displayName || product.sellerName || "Vendedor",
+                      location: product.seller?.location || "Santiago, Chile"
                     },
                     trending: false, // Logic for trending?
                     freeShipping: product.isFreeShipping,

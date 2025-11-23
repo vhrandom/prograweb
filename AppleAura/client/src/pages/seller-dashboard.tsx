@@ -78,6 +78,7 @@ interface Product {
   images: string[];
   discountPercentage?: number;
   shippingCostCents?: number;
+  shippingCost?: number;
   isFreeShipping?: boolean;
 }
 
@@ -233,7 +234,7 @@ export default function SellerDashboard() {
           stock: parseInt(newProduct.stock),
           discountPercentage: newProduct.discountPercentage ? parseInt(newProduct.discountPercentage) : 0,
           status: 'active',
-          shippingCost: newProduct.isFreeShipping ? 0 : parseFloat(newProduct.price), // Fix: use shippingCost state
+          shippingCost: newProduct.isFreeShipping ? 0 : (newProduct.shippingCost ? parseFloat(newProduct.shippingCost) : 0),
           isFreeShipping: newProduct.isFreeShipping
         })
       });
@@ -251,18 +252,19 @@ export default function SellerDashboard() {
     }
   };
 
-  const handleDeleteProduct = async () => {
-    if (!productToDelete) return;
+  const handleDeleteProduct = async (id?: string) => {
+    const targetId = id || productToDelete;
+    if (!targetId) return;
 
     try {
-      const res = await fetch(`/api/seller/products/${productToDelete}`, {
+      const res = await fetch(`/api/products/${targetId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (!res.ok) throw new Error("Failed");
       toast({ title: "Producto eliminado" });
-      setProducts(products.filter(p => p.id !== productToDelete));
+      setProducts(products.filter(p => p.id !== targetId));
       setProductToDelete(null);
     } catch (error) {
       toast({ title: "Error", description: "No se pudo eliminar el producto.", variant: "destructive" });
@@ -334,7 +336,7 @@ export default function SellerDashboard() {
         price: editFormData.price ? parseFloat(editFormData.price.toString()) : undefined,
         stock: editFormData.stock ? parseInt(editFormData.stock.toString()) : undefined,
         discountPercentage: editFormData.discountPercentage ? parseInt(editFormData.discountPercentage.toString()) : 0,
-        shippingCost: editFormData.isFreeShipping ? 0 : (editFormData.price ? parseFloat(editFormData.price.toString()) : 0),
+        shippingCost: editFormData.isFreeShipping ? 0 : (editFormData.shippingCost !== undefined ? parseFloat(editFormData.shippingCost.toString()) : 0),
         isFreeShipping: editFormData.isFreeShipping
       };
       console.log('[DEBUG] Payload:', payload);
@@ -715,7 +717,7 @@ export default function SellerDashboard() {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={handleDeleteProduct} className="bg-red-500 hover:bg-red-600 text-white">
+                              <AlertDialogAction onClick={() => handleDeleteProduct(product.id)} className="bg-red-500 hover:bg-red-600 text-white">
                                 Eliminar
                               </AlertDialogAction>
                             </AlertDialogFooter>

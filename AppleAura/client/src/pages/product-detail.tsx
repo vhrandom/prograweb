@@ -70,9 +70,10 @@ export default function ProductDetail() {
     }
 
     if (!currentVariant) {
+      console.error("[ProductDetail] No variant selected or available. Variants:", variants);
       toast({
         title: "Error",
-        description: "Selecciona una variante del producto",
+        description: variants.length === 0 ? "Este producto no tiene variantes disponibles." : "Selecciona una variante del producto",
         variant: "destructive",
       });
       return;

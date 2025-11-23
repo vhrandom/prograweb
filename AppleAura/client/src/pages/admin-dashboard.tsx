@@ -420,7 +420,7 @@ export default function AdminDashboard() {
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {[
-                    { title: "Ingresos Totales", value: `CLP ${(stats?.totalRevenue / 100).toLocaleString()}`, icon: DollarSign, trend: "+15%", color: "text-green-500", bg: "bg-green-500/10" },
+                    { title: "Ingresos Totales", value: `CLP ${((stats?.totalRevenue || 0) / 100).toLocaleString()}`, icon: DollarSign, trend: "+15%", color: "text-green-500", bg: "bg-green-500/10" },
                     { title: "Órdenes", value: stats?.totalOrders.toLocaleString(), icon: ShoppingBag, trend: "+8%", color: "text-blue-500", bg: "bg-blue-500/10" },
                     { title: "Usuarios", value: stats?.totalUsers.toLocaleString(), icon: Users, trend: "+12%", color: "text-purple-500", bg: "bg-purple-500/10" },
                     { title: "Productos", value: stats?.totalProducts, icon: Package, trend: "+5%", color: "text-orange-500", bg: "bg-orange-500/10" },

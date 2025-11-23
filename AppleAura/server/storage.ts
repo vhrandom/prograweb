@@ -1,11 +1,11 @@
+// Storage implementation for AppleAura
 import { MongoClient, Db, Collection, ObjectId } from "mongodb";
-// --- MUNDO 1: SQL (Exclusivo para Usuarios) ---
+// SQL (SQLite) for users
 import { dbSql } from "./sql";
 import { users } from "shared/schema-sqlite";
 import { eq } from "drizzle-orm";
-// ---------------------------------------------
 
-// --- INTERFACES DE LA APP (Contrato común) ---
+// Shared schema types
 import {
   User,
   InsertUser,
@@ -29,15 +29,16 @@ import { connectMongo } from "./mongo-connection";
 type MongoDoc = { id?: string; _id?: ObjectId };
 
 export interface IStorage {
-  // --- ÁREA SQL ---
+  // SQL area
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
 
-  // --- ÁREA MONGO ---
+  // Mongo area
   getSellerProfile(userId: string): Promise<SellerProfile | undefined>;
   createSellerProfile(profile: InsertSellerProfile): Promise<SellerProfile>;
+  updateSellerProfile(userId: string, updates: Partial<SellerProfile>): Promise<SellerProfile | undefined>;
   getCategories(): Promise<Category[]>;
   getCategoryById(id: string): Promise<Category | undefined>;
   createCategory(category: { name: string; description?: string; icon?: string; parentId?: string }): Promise<Category>;
@@ -45,7 +46,7 @@ export interface IStorage {
   getProductById(id: string): Promise<Product | undefined>;
   getProductBySlug(slug: string): Promise<Product | undefined>;
   createProduct(product: InsertProduct, variantData: { priceCents: number; sku: string; stock: number; discountPercentage?: number }): Promise<Product>;
-  updateProduct(id: string, updates: Partial<Product>): Promise<Product | undefined>;
+  updateProduct(id: string, updates: Partial<Product>, variantUpdates?: Partial<ProductVariant>): Promise<Product | undefined>;
   deleteProduct(id: string): Promise<void>;
   getVariantsByProductId(productId: string): Promise<ProductVariant[]>;
   getVariantById(id: string): Promise<ProductVariant | undefined>;
@@ -62,11 +63,12 @@ export interface IStorage {
   createReview(review: InsertReview): Promise<Review>;
   getSellerStats(sellerId: string): Promise<any>;
 
-  // --- IMÁGENES ---
+  // Images
   uploadImage(buffer: Buffer, mimeType: string): Promise<string>;
   getImage(id: string): Promise<{ buffer: Buffer; mimeType: string } | undefined>;
+  deleteImage(url: string): Promise<void>;
 
-  // --- ADMIN ---
+  // Admin
   getAdminStats(): Promise<any>;
   getRevenueChartData(): Promise<any[]>;
   getCategoryChartData(): Promise<any[]>;
@@ -77,9 +79,7 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // -------------------------------------------------------------------------
-  // HELPERS (Solo para MongoDB)
-  // -------------------------------------------------------------------------
+  // ---------- Helpers ----------
   private _normalize<T extends MongoDoc>(doc: T | null | undefined): T | undefined {
     if (doc && !doc.id && doc._id) {
       doc.id = doc._id.toString();
@@ -88,27 +88,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   private _normalizeArray<T extends MongoDoc>(docs: T[]): T[] {
-    return docs.map((doc) => this._normalize(doc)).filter(Boolean) as T[];
+    return docs.map((d) => this._normalize(d)).filter(Boolean) as T[];
   }
 
   private async _findById<T extends MongoDoc>(collection: Collection<T>, id: string): Promise<T | undefined> {
-    if (!id || typeof id !== "string") return undefined;
+    if (!id) return undefined;
     let doc = await collection.findOne({ id } as any);
     if (!doc && ObjectId.isValid(id)) {
       doc = await collection.findOne({ _id: new ObjectId(id) } as any);
     }
-    return this._normalize(doc);
+    return this._normalize(doc as T | null);
   }
 
-  // ======================================================================
-  // ZONA SQL (SQLite) – Usuarios
-  // ======================================================================
+  // ---------- SQL (SQLite) ----------
   async getUser(id: string): Promise<User | undefined> {
     try {
       const idNum = parseInt(id);
       if (isNaN(idNum)) return undefined;
       const result = dbSql.select().from(users).where(eq(users.id, idNum)).all();
-      if (result.length === 0) return undefined;
+      if (!result.length) return undefined;
       const u = result[0];
       return {
         id: u.id.toString(),
@@ -127,7 +125,7 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
       const result = dbSql.select().from(users).where(eq(users.email, email)).all();
-      if (result.length === 0) return undefined;
+      if (!result.length) return undefined;
       const u = result[0];
       return {
         id: u.id.toString(),
@@ -172,13 +170,8 @@ export class DatabaseStorage implements IStorage {
     if (updates.role) sqlUpdates.role = updates.role;
     if (updates.name) sqlUpdates.name = updates.name;
     if (updates.passwordHash) sqlUpdates.passwordHash = updates.passwordHash;
-    if (Object.keys(sqlUpdates).length === 0) return this.getUser(id);
-    const result = dbSql
-      .update(users)
-      .set(sqlUpdates)
-      .where(eq(users.id, idNum))
-      .returning()
-      .get();
+    if (!Object.keys(sqlUpdates).length) return this.getUser(id);
+    const result = dbSql.update(users).set(sqlUpdates).where(eq(users.id, idNum)).returning().get();
     if (!result) return undefined;
     return {
       id: result.id.toString(),
@@ -190,9 +183,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  // ======================================================================
-  // ZONA MONGODB – Resto de la aplicación
-  // ======================================================================
+  // ---------- MongoDB ----------
   async getSellerProfile(userId: string): Promise<SellerProfile | undefined> {
     const db = await connectMongo();
     const profile = await db.collection<SellerProfile>("seller_profiles").findOne({ userId });
@@ -201,9 +192,16 @@ export class DatabaseStorage implements IStorage {
 
   async createSellerProfile(profile: InsertSellerProfile): Promise<SellerProfile> {
     const db = await connectMongo();
-    const doc = { ...profile, id: profile.id || new ObjectId().toString() };
+    const newId = new ObjectId();
+    const doc = { ...profile, _id: newId, id: profile.id || newId.toString() };
     await db.collection<SellerProfile>("seller_profiles").insertOne(doc);
     return doc as SellerProfile;
+  }
+
+  async updateSellerProfile(userId: string, updates: Partial<SellerProfile>): Promise<SellerProfile | undefined> {
+    const db = await connectMongo();
+    await db.collection<SellerProfile>("seller_profiles").updateOne({ userId }, { $set: updates });
+    return this.getSellerProfile(userId);
   }
 
   async getCategories(): Promise<Category[]> {
@@ -219,74 +217,50 @@ export class DatabaseStorage implements IStorage {
 
   async createCategory(category: { name: string; description?: string; icon?: string; parentId?: string }): Promise<Category> {
     const db = await connectMongo();
-    const doc = { ...category, id: new ObjectId().toString() };
+    const newId = new ObjectId();
+    const doc = { ...category, _id: newId, id: newId.toString() };
     await db.collection<Category>("categories").insertOne(doc);
     return doc as Category;
   }
 
-  // -------------------- Products Pipeline --------------------
-  // Este es el motor principal de los filtros y la visualización correcta
+  // ---------- Product Pipeline ----------
   private _productBasePipeline(filters?: any): any[] {
     const pipeline: any[] = [];
     const { limit, offset, sort, ...queryFilters } = filters || {};
-
-    // --- 1. PRE-MATCH (Filtros directos en la colección Product) ---
     const preMatch: any = {};
-    const postMatch: any = {}; // Para filtros después de calcular precios
+    const postMatch: any = {};
 
     if (queryFilters) {
-      // Búsqueda por texto (Nombre o Descripción)
       if (queryFilters.search) {
-        const regex = new RegExp(String(queryFilters.search), 'i');
+        const regex = new RegExp(String(queryFilters.search), "i");
         preMatch.$or = [{ name: regex }, { description: regex }];
       }
-
-      // Filtro por Categoría (Botones Superiores)
-      if (queryFilters.categoryId) {
-        preMatch.categoryId = queryFilters.categoryId;
-      }
-
-      // Filtro por Marca (Dropdown)
-      if (queryFilters.brand && queryFilters.brand !== 'Todas') {
-        preMatch.brand = queryFilters.brand;
-      }
-
-      // Filtro por Envío Gratis (Chip)
-      if (queryFilters.freeShipping === true || queryFilters.freeShipping === 'true') {
-        preMatch.freeShipping = true;
-      }
-
-      // Otros filtros directos
+      if (queryFilters.categoryId) preMatch.categoryId = queryFilters.categoryId;
+      if (queryFilters.brand && queryFilters.brand !== "Todas") preMatch.brand = queryFilters.brand;
+      if (queryFilters.freeShipping === true || queryFilters.freeShipping === "true") preMatch.freeShipping = true;
       if (queryFilters.id) {
-        // IMPORTANTE: Si filtramos por ID, debemos intentar coincidir con _id (ObjectId)
-        // ya que el campo 'id' (string) podría no existir en documentos antiguos o importados
         if (ObjectId.isValid(queryFilters.id)) {
-          preMatch._id = new ObjectId(queryFilters.id);
+          const idCondition = { $or: [{ _id: new ObjectId(queryFilters.id) }, { id: queryFilters.id }] };
+          if (preMatch.$or) {
+            preMatch.$and = [{ $or: preMatch.$or }, idCondition];
+            delete preMatch.$or;
+          } else {
+            preMatch.$or = idCondition.$or;
+          }
         } else {
           preMatch.id = queryFilters.id;
         }
       }
       if (queryFilters.slug) preMatch.slug = queryFilters.slug;
       if (queryFilters.sellerId) preMatch.sellerId = queryFilters.sellerId;
-
-      // Filtros numéricos que se aplican DESPUÉS de obtener el precio (Post-Match)
-      if (queryFilters.minPrice) {
-        postMatch.price = { ...(postMatch.price || {}), $gte: Number(queryFilters.minPrice) };
-      }
-      if (queryFilters.maxPrice) {
-        postMatch.price = { ...(postMatch.price || {}), $lte: Number(queryFilters.maxPrice) };
-      }
-      if (queryFilters.hasDiscount === true) {
-        postMatch.discountPercentage = { $gt: 0 };
-      }
+      if (queryFilters.minPrice) postMatch.price = { ...(postMatch.price || {}), $gte: Number(queryFilters.minPrice) };
+      if (queryFilters.maxPrice) postMatch.price = { ...(postMatch.price || {}), $lte: Number(queryFilters.maxPrice) };
+      if (queryFilters.hasDiscount === true) postMatch.discountPercentage = { $gt: 0 };
     }
 
-    // Aplicar filtros directos
-    if (Object.keys(preMatch).length > 0) {
-      pipeline.push({ $match: preMatch });
-    }
+    if (Object.keys(preMatch).length > 0) pipeline.push({ $match: preMatch });
 
-    // --- 2. LOOKUPS & FIELDS (Unir variantes y calcular precio) ---
+    // Lookup variants
     pipeline.push({
       $lookup: {
         from: "product_variants",
@@ -295,39 +269,26 @@ export class DatabaseStorage implements IStorage {
         as: "variants",
       },
     });
-
-    // Obtener la primera variante para sacar el precio base
-    pipeline.push({
-      $addFields: {
-        firstVariant: { $arrayElemAt: ["$variants", 0] }
-      }
-    });
-
-    // Normalizar campos críticos (Precio y Stock)
+    // First variant
+    pipeline.push({ $addFields: { firstVariant: { $arrayElemAt: ["$variants", 0] } } });
+    // Add fields
     pipeline.push({
       $addFields: {
         variantId: "$firstVariant.id",
-        // Usamos $ifNull para que nunca sea undefined, fallback a 0
         price: { $ifNull: ["$firstVariant.priceCents", 0] },
-        priceCents: { $ifNull: ["$firstVariant.priceCents", 0] }, // Duplicado por compatibilidad
+        priceCents: { $ifNull: ["$firstVariant.priceCents", 0] },
         stock: "$firstVariant.stock",
         sku: "$firstVariant.sku",
         discountPercentage: "$firstVariant.discountPercentage",
-        // Alias para el frontend (ProductCard espera freeShipping)
         freeShipping: "$firstVariant.isFreeShipping",
         isFreeShipping: "$firstVariant.isFreeShipping",
+        shippingCost: { $divide: [{ $ifNull: ["$firstVariant.shippingCostCents", 0] }, 100] },
       },
     });
 
-    // --- 3. POST-MATCH (Filtros de Precio) ---
-    // Se aplica aquí porque ahora 'price' ya existe
-    if (Object.keys(postMatch).length > 0) {
-      pipeline.push({ $match: postMatch });
-    }
+    if (Object.keys(postMatch).length > 0) pipeline.push({ $match: postMatch });
 
-    // --- 4. LOOKUPS SECUNDARIOS (Vendedor y Reseñas) ---
-
-    // Unir perfil de vendedor (Solo datos de Mongo, el nombre real se une en JS después)
+    // Seller profile lookup
     pipeline.push({
       $lookup: {
         from: "seller_profiles",
@@ -337,8 +298,7 @@ export class DatabaseStorage implements IStorage {
       },
     });
     pipeline.push({ $unwind: { path: "$sellerProfile", preserveNullAndEmptyArrays: true } });
-
-    // Unir reseñas para Rating
+    // Reviews lookup
     pipeline.push({
       $lookup: {
         from: "reviews",
@@ -347,7 +307,6 @@ export class DatabaseStorage implements IStorage {
         as: "reviews",
       },
     });
-
     pipeline.push({
       $addFields: {
         reviewCount: { $size: "$reviews" },
@@ -355,113 +314,130 @@ export class DatabaseStorage implements IStorage {
           $cond: [
             { $gt: [{ $size: "$reviews" }, 0] },
             { $avg: { $map: { input: "$reviews", as: "r", in: { $toDouble: "$$r.rating" } } } },
-            0 // Si no tiene reseñas, rating es 0 (no null) para que se pinte bien
+            0,
           ],
         },
       },
     });
 
-    // --- 5. ORDENAMIENTO (Sort) ---
     if (sort) {
-      if (sort === 'newest') pipeline.push({ $sort: { createdAt: -1 } });
-      else if (sort === 'price_asc') pipeline.push({ $sort: { price: 1 } });
-      else if (sort === 'price_desc') pipeline.push({ $sort: { price: -1 } });
-      else if (sort === 'rating') pipeline.push({ $sort: { rating: -1 } }); // Mejor valorados
-      else if (sort === 'popular') pipeline.push({ $sort: { reviewCount: -1 } }); // Más populares (por # de reseñas)
+      if (sort === "newest") pipeline.push({ $sort: { createdAt: -1 } });
+      else if (sort === "price_asc") pipeline.push({ $sort: { price: 1 } });
+      else if (sort === "price_desc") pipeline.push({ $sort: { price: -1 } });
+      else if (sort === "rating") pipeline.push({ $sort: { rating: -1 } });
+      else if (sort === "popular") pipeline.push({ $sort: { reviewCount: -1 } });
     }
 
-    // --- 6. PAGINACIÓN ---
     if (offset !== undefined) pipeline.push({ $skip: Number(offset) });
     if (limit !== undefined) pipeline.push({ $limit: Number(limit) });
 
-    // Limpieza final de arrays pesados
-    // IMPORTANTE: NO eliminar variants porque el frontend lo usa para mostrar el precio
     pipeline.push({ $project: { reviews: 0 } });
-
     return pipeline;
   }
 
   async getProducts(filters?: any): Promise<Product[]> {
     const db = await connectMongo();
-
-    // 1. Ejecutar el Pipeline de Mongo
     const pipeline = this._productBasePipeline(filters);
-    const rawProducts = await db.collection<any>("products").aggregate(pipeline).toArray();
-
-    // 2. HIDRATACIÓN (Cruzar datos con SQLite para obtener nombres reales)
-    const enrichedProducts = await Promise.all(rawProducts.map(async (prod) => {
-      let sellerName = "Vendedor"; // Fallback por defecto
-      let sellerData = prod.sellerProfile || {};
-
-      // Si hay un perfil de vendedor, buscamos el usuario en SQLite
-      if (sellerData.userId) {
-        const user = await this.getUser(sellerData.userId);
-        // Prioridad: Nombre de tienda (displayName) > Nombre de usuario > "Vendedor"
-        if (sellerData.displayName) {
-          sellerName = sellerData.displayName;
-        } else if (user && user.name) {
-          sellerName = user.name;
+    const raw = await db.collection<any>("products").aggregate(pipeline).toArray();
+    const enriched = await Promise.all(
+      raw.map(async (prod) => {
+        let sellerName = "Vendedor";
+        const sellerData = prod.sellerProfile || {};
+        if (sellerData.userId) {
+          const user = await this.getUser(sellerData.userId);
+          if (sellerData.displayName) sellerName = sellerData.displayName;
+          else if (user && user.name) sellerName = user.name;
         }
-      }
-
-      // Construimos el objeto Seller final para el Frontend
-      // IMPORTANTE: El frontend espera 'displayName' o 'sellerName' en la raíz
-      const finalSeller = {
-        ...sellerData,
-        displayName: sellerName, // Mapeamos el nombre encontrado a displayName
-        name: sellerName
-      };
-
-      return {
-        ...prod,
-        seller: finalSeller,
-        sellerName: sellerName, // También lo ponemos en la raíz por si acaso
-        rating: Number(prod.rating || 0), // Aseguramos que sea número
-        id: prod._id ? prod._id.toString() : prod.id, // Normalizar ID
-      };
-    }));
-
-    return this._normalizeArray(enrichedProducts as unknown as Product[]);
+        const finalSeller = { ...sellerData, displayName: sellerName, name: sellerName };
+        return {
+          ...prod,
+          seller: finalSeller,
+          sellerName,
+          rating: Number(prod.rating || 0),
+          id: prod._id ? prod._id.toString() : prod.id,
+        };
+      })
+    );
+    return this._normalizeArray(enriched as unknown as Product[]);
   }
 
   async getProductById(id: string): Promise<Product | undefined> {
     const products = await this.getProducts({ id, limit: 1 });
-    return products.length > 0 ? products[0] : undefined;
+    return products.length ? products[0] : undefined;
   }
 
   async getProductBySlug(slug: string): Promise<Product | undefined> {
     const products = await this.getProducts({ slug, limit: 1 });
-    return products.length > 0 ? products[0] : undefined;
+    return products.length ? products[0] : undefined;
   }
 
   async createProduct(product: InsertProduct, variantData: { priceCents: number; sku: string; stock: number; discountPercentage?: number }): Promise<Product> {
     const db = await connectMongo();
-    const productDoc = { ...product, id: new ObjectId().toString() };
+    const newProductId = new ObjectId();
+    const productDoc = { ...product, _id: newProductId, id: newProductId.toString() };
     await db.collection<Product>("products").insertOne(productDoc);
+    const newVariantId = new ObjectId();
     const variantDoc = {
       ...variantData,
       productId: productDoc.id,
-      id: new ObjectId().toString(),
-      currency: "CLP", // Default currency
+      _id: newVariantId,
+      id: newVariantId.toString(),
+      currency: "CLP",
     };
     await db.collection<ProductVariant>("product_variants").insertOne(variantDoc);
     return (await this.getProductById(productDoc.id)) as Product;
   }
 
-  async updateProduct(id: string, updates: Partial<Product>): Promise<Product | undefined> {
+  async updateProduct(id: string, updates: Partial<Product>, variantUpdates?: Partial<ProductVariant>): Promise<Product | undefined> {
     const db = await connectMongo();
-    await db.collection<Product>("products").updateOne({ id }, { $set: updates });
+    if (Object.keys(updates).length) {
+      await db.collection<Product>("products").updateOne({ id }, { $set: updates });
+    }
+
+    if (variantUpdates && Object.keys(variantUpdates).length) {
+      const variants = await db.collection<ProductVariant>("product_variants").find({ productId: id }).toArray();
+
+      if (variants.length === 0) {
+        const newVariantId = new ObjectId();
+        const variantDoc = {
+          productId: id,
+          _id: newVariantId,
+          id: newVariantId.toString(),
+          currency: "CLP",
+          priceCents: variantUpdates.priceCents || 0,
+          sku: variantUpdates.sku || "DEFAULT-SKU",
+          stock: variantUpdates.stock || 0,
+          discountPercentage: variantUpdates.discountPercentage || 0,
+          shippingCostCents: variantUpdates.shippingCostCents || 0,
+          isFreeShipping: variantUpdates.isFreeShipping || false,
+          attributes: {}
+        };
+        await db.collection<ProductVariant>("product_variants").insertOne(variantDoc as any);
+      } else {
+        await db.collection<ProductVariant>("product_variants").updateMany({ productId: id }, { $set: variantUpdates });
+      }
+    }
     return this.getProductById(id);
   }
 
   async deleteProduct(id: string): Promise<void> {
     const db = await connectMongo();
-    await db.collection<Product>("products").deleteOne({ id });
+    const product = await this.getProductById(id);
+    if (product && product.images && product.images.length > 0) {
+      await Promise.all(product.images.map((url) => this.deleteImage(url)));
+    }
+
+    const filter: any = { id };
+    if (ObjectId.isValid(id)) {
+      filter.$or = [{ id }, { _id: new ObjectId(id) }];
+      delete filter.id;
+    }
+
+    await db.collection<Product>("products").deleteOne(filter);
     await db.collection<ProductVariant>("product_variants").deleteMany({ productId: id });
     await db.collection<Review>("reviews").deleteMany({ productId: id });
   }
 
-  // -------------------- Variants --------------------
   async getVariantsByProductId(productId: string): Promise<ProductVariant[]> {
     const db = await connectMongo();
     const variants = await db.collection<ProductVariant>("product_variants").find({ productId }).toArray();
@@ -475,29 +451,24 @@ export class DatabaseStorage implements IStorage {
 
   async createVariant(variant: InsertProductVariant): Promise<ProductVariant> {
     const db = await connectMongo();
-    const doc = { ...variant, id: variant.id || new ObjectId().toString() };
+    const newId = new ObjectId();
+    const doc = { ...variant, _id: newId, id: variant.id || newId.toString() };
     await db.collection<ProductVariant>("product_variants").insertOne(doc);
     return doc as ProductVariant;
   }
 
-  // -------------------- Cart --------------------
+  // ---------- Cart ----------
   async getCartByUserId(userId: string): Promise<CartItem[]> {
     const db = await connectMongo();
-    const cartItems = await db.collection<CartItem>("cart_items").find({ userId }).toArray();
+    const items = await db.collection<CartItem>("cart_items").find({ userId }).toArray();
+    const normalized = this._normalizeArray(items);
     const enriched = await Promise.all(
-      cartItems.map(async (item) => {
+      normalized.map(async (item) => {
         const variant = await this.getVariantById(item.variantId);
         const product = variant ? await this.getProductById(variant.productId) : null;
         const sku = variant?.sku || item.variantId;
         const productName = product?.title || `Producto ${item.variantId.substring(0, 8)}`;
-        return {
-          ...item,
-          productName,
-          sku,
-          productPrice: variant ? variant.priceCents : 0,
-          productCurrency: variant?.currency || "USD",
-          productImage: product?.images?.[0] || "placeholder.jpg",
-        };
+        return { ...item, productName, sku, productPrice: variant ? variant.priceCents : 0, productCurrency: variant?.currency || "USD", productImage: product?.images?.[0] || "placeholder.jpg" };
       })
     );
     return enriched;
@@ -505,11 +476,7 @@ export class DatabaseStorage implements IStorage {
 
   async addToCart(userId: string, variantId: string, quantity: number): Promise<void> {
     const db = await connectMongo();
-    await db.collection<CartItem>("cart_items").updateOne(
-      { userId, variantId },
-      { $inc: { quantity } },
-      { upsert: true }
-    );
+    await db.collection<CartItem>("cart_items").updateOne({ userId, variantId }, { $inc: { quantity } }, { upsert: true });
   }
 
   async updateCartItem(userId: string, variantId: string, quantity: number): Promise<void> {
@@ -527,7 +494,7 @@ export class DatabaseStorage implements IStorage {
     await db.collection<CartItem>("cart_items").deleteMany({ userId });
   }
 
-  // -------------------- Orders --------------------
+  // ---------- Orders ----------
   async getOrdersBySellerId(sellerId: string): Promise<Order[]> {
     const db = await connectMongo();
     const orders = await db.collection<Order>("orders").find({ sellerId }).toArray();
@@ -542,12 +509,13 @@ export class DatabaseStorage implements IStorage {
 
   async createOrder(order: InsertOrder): Promise<Order> {
     const db = await connectMongo();
-    const doc = { ...order, id: order.id || new ObjectId().toString() };
+    const newId = new ObjectId();
+    const doc = { ...order, _id: newId, id: order.id || newId.toString() };
     await db.collection<Order>("orders").insertOne(doc);
     return doc as Order;
   }
 
-  // -------------------- Reviews --------------------
+  // ---------- Reviews ----------
   async getReviewsByProductId(productId: string): Promise<Review[]> {
     const db = await connectMongo();
     const reviews = await db.collection<Review>("reviews").find({ productId }).toArray();
@@ -562,7 +530,8 @@ export class DatabaseStorage implements IStorage {
 
   async createReview(review: InsertReview): Promise<Review> {
     const db = await connectMongo();
-    const doc = { ...review, id: review.id || new ObjectId().toString() };
+    const newId = new ObjectId();
+    const doc = { ...review, _id: newId, id: review.id || newId.toString() };
     await db.collection<Review>("reviews").insertOne(doc);
     return doc as Review;
   }
@@ -571,22 +540,15 @@ export class DatabaseStorage implements IStorage {
     const db = await connectMongo();
     const productCount = await db.collection<Product>("products").countDocuments({ sellerId });
     const orderCount = await db.collection<Order>("orders").countDocuments({ sellerId });
-    return {
-      productCount,
-      orderCount,
-      totalProducts: productCount,
-      totalOrders: orderCount,
-      totalRevenue: 0,
-      pendingOrders: 0
-    };
+    return { productCount, orderCount, totalProducts: productCount, totalOrders: orderCount, totalRevenue: 0, pendingOrders: 0 };
   }
 
-  // -------------------- Images --------------------
+  // ---------- Images ----------
   async uploadImage(buffer: Buffer, mimeType: string): Promise<string> {
     const db = await connectMongo();
-    const id = new ObjectId().toString();
-    await db.collection("images").insertOne({ id, buffer, mimeType, createdAt: new Date() });
-    return id;
+    const id = new ObjectId();
+    await db.collection("images").insertOne({ _id: id, id: id.toString(), buffer, mimeType, createdAt: new Date() });
+    return id.toString();
   }
 
   async getImage(id: string): Promise<{ buffer: Buffer; mimeType: string } | undefined> {
@@ -596,16 +558,35 @@ export class DatabaseStorage implements IStorage {
     return { buffer: image.buffer.buffer, mimeType: image.mimeType };
   }
 
-  // -------------------- Admin --------------------
+  async deleteImage(url: string): Promise<void> {
+    if (!url.includes("amazonaws.com")) return;
+    try {
+      const urlObj = new URL(url);
+      const key = urlObj.pathname.substring(1);
+      if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && process.env.AWS_BUCKET_NAME && process.env.AWS_REGION) {
+        const { S3Client, DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+        const s3 = new S3Client({
+          region: process.env.AWS_REGION,
+          credentials: { accessKeyId: process.env.AWS_ACCESS_KEY_ID, secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY },
+        });
+        await s3.send(new DeleteObjectCommand({ Bucket: process.env.AWS_BUCKET_NAME, Key: key }));
+        console.log(`[S3 Delete] Successfully deleted ${key}`);
+      }
+    } catch (e) {
+      console.error(`Failed to delete S3 image ${url}:`, e);
+    }
+  }
+
+  // ---------- Admin ----------
   async getAdminStats(): Promise<any> {
-    const db = await connectMongo();
     const totalUsers = dbSql.select().from(users).all().length;
+    const db = await connectMongo();
     const totalOrders = await db.collection<Order>("orders").countDocuments();
-    const revenueResult = await db.collection<Order>("orders").aggregate([
+    const revenueRes = await db.collection<Order>("orders").aggregate([
       { $match: { status: { $in: ["delivered", "shipped", "paid"] } } },
       { $group: { _id: null, totalRevenue: { $sum: "$totalCents" } } },
     ]).toArray();
-    const totalRevenue = revenueResult[0]?.totalRevenue || 0;
+    const totalRevenue = revenueRes[0]?.totalRevenue || 0;
     const totalProducts = await db.collection<Product>("products").countDocuments();
     return { totalUsers, totalOrders, totalRevenue, totalProducts };
   }
@@ -615,23 +596,12 @@ export class DatabaseStorage implements IStorage {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     const pipeline = [
-      {
-        $match: {
-          status: { $in: ["delivered", "shipped", "paid"] },
-          createdAt: { $gte: sixMonthsAgo.getTime() },
-        },
-      },
+      { $match: { status: { $in: ["delivered", "shipped", "paid"] }, createdAt: { $gte: sixMonthsAgo.getTime() } } },
       { $project: { date: { $toDate: "$createdAt" }, totalCents: 1 } },
-      {
-        $group: {
-          _id: { month: { $month: "$date" }, year: { $year: "$date" } },
-          total: { $sum: "$totalCents" },
-        },
-      },
+      { $group: { _id: { month: { $month: "$date" }, year: { $year: "$date" } }, total: { $sum: "$totalCents" } } },
       { $sort: { "_id.year": 1, "_id.month": 1 } },
     ];
-    const results = await db.collection<Order>("orders").aggregate(pipeline).toArray();
-    return results;
+    return await db.collection<Order>("orders").aggregate(pipeline).toArray();
   }
 
   async getCategoryChartData(): Promise<any[]> {
@@ -648,9 +618,7 @@ export class DatabaseStorage implements IStorage {
     const db = await connectMongo();
     const collection = db.collection<SellerProfile>("seller_profiles");
     let filter: any = { id };
-    if (ObjectId.isValid(id)) {
-      filter = { $or: [{ id }, { _id: new ObjectId(id) }] };
-    }
+    if (ObjectId.isValid(id)) filter = { $or: [{ id }, { _id: new ObjectId(id) }] };
     await collection.updateOne(filter, { $set: { status } });
     const updated = await collection.findOne(filter);
     return this._normalize(updated);
@@ -665,14 +633,7 @@ export class DatabaseStorage implements IStorage {
   async getAllUsers(): Promise<User[]> {
     try {
       const result = dbSql.select().from(users).all();
-      return result.map((u) => ({
-        id: u.id.toString(),
-        email: u.email,
-        passwordHash: u.passwordHash,
-        role: u.role as any,
-        name: u.name || "Usuario",
-        createdAt: u.createdAt ? u.createdAt.getTime() : Date.now(),
-      }));
+      return result.map((u) => ({ id: u.id.toString(), email: u.email, passwordHash: u.passwordHash, role: u.role as any, name: u.name || "Usuario", createdAt: u.createdAt ? u.createdAt.getTime() : Date.now() }));
     } catch (e) {
       console.error("Error SQLite getAllUsers:", e);
       return [];

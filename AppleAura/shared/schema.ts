@@ -60,6 +60,11 @@ export interface Product {
   seller?: SellerProfile;
   reviewCount?: number;
   rating?: number;
+  // Enriched fields
+  price?: number;
+  stock?: number;
+  shippingCost?: number;
+  isFreeShipping?: boolean;
 }
 export type InsertProduct = Omit<Product, 'id' | 'createdAt'> & Partial<Pick<Product, 'id' | 'createdAt'>>;
 

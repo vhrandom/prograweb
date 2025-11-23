@@ -229,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sku: sku,
         stock: parseInt(stock, 10),
         discountPercentage: discountPercentage ? parseInt(discountPercentage, 10) : 0,
-        shippingCostCents: shippingCost ? Math.floor(parseFloat(shippingCost) * 100) : 0,
+        shippingCostCents: (isFreeShipping === true || isFreeShipping === 'true') ? 0 : (shippingCost ? Math.floor(parseFloat(shippingCost) * 100) : 0),
         isFreeShipping: isFreeShipping === true || isFreeShipping === 'true'
       };
 
@@ -240,7 +240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Failed to create product:", error);
-      res.status(400).json({ message: "Failed to create product", error: error.message });
+      res.status(400).json({ message: "Failed to create product", error: (error as any).message });
     }
   });
 
@@ -386,6 +386,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(profile);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch seller profile", error });
+    }
+  });
+
+
+
+  app.put("/api/seller/profile", authenticateToken, async (req: any, res) => {
+    try {
+      const { displayName, description, location } = req.body;
+      const profile = await storage.updateSellerProfile(req.user.id, {
+        displayName,
+        description,
+        location
+      });
+      res.json(profile);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update profile", error });
     }
   });
 

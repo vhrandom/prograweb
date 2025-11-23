@@ -59,6 +59,19 @@ export default function ProductDetail() {
 
   const currentVariant = variants.find((v: any) => v.id === selectedVariant) || variants[0];
 
+  // --- CORRECCIÓN MATEMÁTICA DE PRECIOS ---
+  // Antes: dbPrice se trataba como el final.
+  // Ahora: dbPrice se trata como el ORIGINAL (ej: 10.000)
+
+  const discount = currentVariant?.discountPercentage || 0;
+  const originalPrice = currentVariant?.priceCents || 0; // Precio Base (ej: 10.000)
+
+  // Calculamos el precio final aplicando el descuento
+  // Ejemplo: 10.000 * (1 - 0.50) = 5.000
+  const finalPrice = discount > 0
+    ? Math.round(originalPrice * (1 - discount / 100))
+    : originalPrice;
+
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
       toast({
@@ -70,10 +83,9 @@ export default function ProductDetail() {
     }
 
     if (!currentVariant) {
-      console.error("[ProductDetail] No variant selected or available. Variants:", variants);
       toast({
         title: "Error",
-        description: variants.length === 0 ? "Este producto no tiene variantes disponibles." : "Selecciona una variante del producto",
+        description: "Selecciona una variante del producto",
         variant: "destructive",
       });
       return;
@@ -209,20 +221,28 @@ export default function ProductDetail() {
           {/* Product Gallery Premium */}
           <div className="space-y-6">
             <div className="aspect-square relative bg-white dark:bg-apple-dark-2 rounded-3xl overflow-hidden shadow-2xl border border-white/20 dark:border-white/10 group">
+              {/* Badge de Descuento Visualmente Corregido */}
+              {discount > 0 && (
+                <div className="absolute top-4 left-4 z-20">
+                  <Badge className="bg-red-500 hover:bg-red-600 text-white border-0 px-3 py-1.5 text-md font-bold shadow-lg">
+                    {discount}% OFF
+                  </Badge>
+                </div>
+              )}
+
               <div className="absolute inset-0 bg-gradient-to-tr from-black/5 to-transparent dark:from-white/5 pointer-events-none z-10" />
               <img
-                src={product.images[0] || "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600"}
+                src={product.images?.[0] || "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600"}
                 alt={product.title}
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
-              {/* Zoom Hint */}
               <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-md text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <Share2 className="w-5 h-5" /> {/* Reusing icon for now, ideally ZoomIn */}
+                <Share2 className="w-5 h-5" />
               </div>
             </div>
 
             {/* Thumbnail Gallery */}
-            {product.images.length > 1 && (
+            {product.images?.length > 1 && (
               <div className="grid grid-cols-4 gap-4">
                 {product.images.slice(1, 5).map((image: string, index: number) => (
                   <div key={index} className="aspect-square cursor-pointer bg-white dark:bg-apple-dark-2 rounded-2xl overflow-hidden border-2 border-transparent hover:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md">
@@ -234,7 +254,6 @@ export default function ProductDetail() {
           </div>
 
           {/* Product Info */}
-          {/* Product Info Premium */}
           <div className="space-y-8">
             <div>
               <div className="flex items-center justify-between mb-6">
@@ -269,13 +288,31 @@ export default function ProductDetail() {
                 {product.title}
               </h1>
 
-              <div className="flex items-end gap-4 mb-8 pb-8 border-b border-gray-100 dark:border-gray-800">
-                <span className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">
-                  {currentVariant ? formatPrice(currentVariant.priceCents, currentVariant.currency) : ""}
-                </span>
-                <Badge className="mb-2 px-3 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100">
-                  En stock
-                </Badge>
+              {/* SECCIÓN DE PRECIO CORREGIDA */}
+              <div className="mb-8 pb-8 border-b border-gray-100 dark:border-gray-800">
+                <div className="flex flex-col gap-1">
+                  {/* Si hay descuento, mostramos el Precio Original (el alto) tachado */}
+                  {discount > 0 && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg text-gray-400 line-through decoration-red-400/50">
+                        {formatPrice(originalPrice, currentVariant?.currency)}
+                      </span>
+                      <Badge className="bg-red-500 hover:bg-red-600 text-white border-0">
+                        {discount}% OFF
+                      </Badge>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-4">
+                    {/* El precio grande ahora es el Final (con descuento aplicado) */}
+                    <span className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">
+                      {currentVariant ? formatPrice(finalPrice, currentVariant.currency) : ""}
+                    </span>
+                    <Badge className="px-3 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100">
+                      En stock
+                    </Badge>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -292,17 +329,16 @@ export default function ProductDetail() {
                       {product.seller?.displayName || "Vendedor Verificado"}
                       <CheckCircle className="w-4 h-4 text-blue-500" />
                     </span>
-                    {product.seller?.city && (
+                    {product.seller?.location && (
                       <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                         <MapPin className="w-3 h-3 mr-1" />
-                        {product.seller.city}
+                        {product.seller.location}
                       </div>
                     )}
                   </div>
                 </div>
               </div>
             </div>
-
 
             {/* Variants */}
             {variants.length > 1 && (
@@ -313,11 +349,18 @@ export default function ProductDetail() {
                     <SelectValue placeholder="Selecciona una variante" />
                   </SelectTrigger>
                   <SelectContent>
-                    {variants.map((variant: any) => (
-                      <SelectItem key={variant.id} value={variant.id}>
-                        {variant.sku} - {formatPrice(variant.priceCents, variant.currency)}
-                      </SelectItem>
-                    ))}
+                    {variants.map((variant: any) => {
+                      // Calculamos precio variante también
+                      const vDiscount = variant.discountPercentage || 0;
+                      const vPrice = variant.priceCents;
+                      const vFinal = vDiscount > 0 ? Math.round(vPrice * (1 - vDiscount / 100)) : vPrice;
+
+                      return (
+                        <SelectItem key={variant.id} value={variant.id}>
+                          {variant.sku} - {formatPrice(vFinal, variant.currency)}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>

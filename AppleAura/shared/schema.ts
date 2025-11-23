@@ -65,6 +65,7 @@ export interface Product {
   stock?: number;
   shippingCost?: number;
   isFreeShipping?: boolean;
+  brand?: string;
 }
 export type InsertProduct = Omit<Product, 'id' | 'createdAt'> & Partial<Pick<Product, 'id' | 'createdAt'>>;
 

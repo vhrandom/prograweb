@@ -10,7 +10,8 @@ import {
   Menu,
   X,
   Package,
-  Settings
+  Settings,
+  LayoutDashboard
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,16 +27,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function Navigation() { // Rebuild trigger
+export function Navigation() {
   const [, setLocation] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const { user, logout, isAuthenticated } = useAuth();
   const { itemCount } = useCart();
 
+  // CORRECCIÓN: Redirigir siempre a /products con el query
   const handleSearch = (query: string) => {
     if (query.trim()) {
-      setLocation(`/?search=${encodeURIComponent(query)}`);
+      // Usamos /products porque ahí vive la lógica de filtrado que arreglamos antes
+      setLocation(`/products?search=${encodeURIComponent(query)}`);
+    } else {
+      // Si la búsqueda está vacía, ir a productos sin filtros
+      setLocation("/products");
     }
   };
 
@@ -53,45 +59,49 @@ export function Navigation() { // Rebuild trigger
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="flex items-center space-x-2 p-2 rounded-lg hover:bg-apple-gray-6 dark:hover:bg-apple-dark-2 transition-colors"
+          className="flex items-center space-x-2 p-2 rounded-lg hover:bg-apple-gray-6 dark:hover:bg-apple-dark-2 transition-colors focus:ring-0"
         >
-          <div className="w-8 h-8 bg-gradient-to-br from-apple-blue to-apple-green rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-br from-apple-blue to-apple-green rounded-full flex items-center justify-center shadow-sm">
             <span className="text-caption-1 font-semibold text-white">
-              {user?.name[0] || "U"}
+              {user?.name?.[0]?.toUpperCase() || "U"}
             </span>
           </div>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-56 mt-2">
         <div className="px-2 py-1.5">
-          <p className="text-sm font-medium">{user?.name}</p>
-          <p className="text-xs text-muted-foreground">{user?.email}</p>
+          <p className="text-sm font-medium leading-none">{user?.name}</p>
+          <p className="text-xs text-muted-foreground mt-1">{user?.email}</p>
         </div>
         <DropdownMenuSeparator />
+
         <DropdownMenuItem asChild>
-          <Link href="/orders" className="flex items-center space-x-2">
-            <Package className="w-4 h-4" />
+          <Link href="/orders" className="cursor-pointer flex items-center">
+            <Package className="w-4 h-4 mr-2" />
             <span>Mis Órdenes</span>
           </Link>
         </DropdownMenuItem>
+
         {user?.role === "seller" && (
           <DropdownMenuItem asChild>
-            <Link href="/seller/dashboard" className="flex items-center space-x-2">
-              <Settings className="w-4 h-4" />
+            <Link href="/seller/dashboard" className="cursor-pointer flex items-center">
+              <LayoutDashboard className="w-4 h-4 mr-2" />
               <span>Panel de Vendedor</span>
             </Link>
           </DropdownMenuItem>
         )}
+
         {user?.role === "admin" && (
           <DropdownMenuItem asChild>
-            <Link href="/admin/dashboard" className="flex items-center space-x-2">
-              <Settings className="w-4 h-4" />
+            <Link href="/admin/dashboard" className="cursor-pointer flex items-center">
+              <Settings className="w-4 h-4 mr-2" />
               <span>Panel Admin</span>
             </Link>
           </DropdownMenuItem>
         )}
+
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+        <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20">
           Cerrar Sesión
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -102,42 +112,37 @@ export function Navigation() { // Rebuild trigger
     <nav className="sticky top-0 z-50 w-full border-b border-gray-200 dark:border-white/10 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-xl transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
+
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-3">
-            <img
-              src="/images/logo.png"
-              alt="logo"
-              className="w-10 h-10 rounded-lg"
-            />
-            <span className="text-title-2 font-semibold hidden sm:block text-gray-900 dark:text-white">
+          <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+            <div className="w-10 h-10 bg-gradient-to-br from-apple-blue to-tech-blue rounded-lg flex items-center justify-center text-white">
+              {/* Si no tienes logo.png, usamos un icono como fallback */}
+              <Zap className="w-6 h-6" fill="currentColor" />
+            </div>
+            <span className="text-title-2 font-bold hidden sm:block bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300">
               Silicon Trail
             </span>
           </Link>
 
           {/* Search Bar - Desktop */}
-          <div className="hidden md:block flex-1 max-w-2xl mx-8">
+          <div className="hidden md:block flex-1 max-w-xl mx-8">
             <SearchBar onSearch={handleSearch} />
           </div>
 
           {/* Navigation Items - Desktop */}
-          <div className="hidden md:flex items-center space-x-1">
-            <Link href="/categories">
-              <Button variant="ghost" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-apple-blue dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-all">
-                Categorías
-              </Button>
-            </Link>
-            <Link href="/offers">
-              <Button variant="ghost" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-apple-blue dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-all">
-                Ofertas
+          <div className="hidden md:flex items-center space-x-2">
+            <Link href="/products">
+              <Button variant="ghost" className="text-sm font-medium hover:bg-apple-gray-6 dark:hover:bg-white/10">
+                Productos
               </Button>
             </Link>
 
             {/* Cart */}
             <Link href="/cart">
-              <Button variant="ghost" size="icon" className="relative">
-                <ShoppingCart className="h-6 w-6" />
+              <Button variant="ghost" size="icon" className="relative hover:bg-apple-gray-6 dark:hover:bg-white/10">
+                <ShoppingCart className="h-5 w-5" />
                 {itemCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-4 w-4 bg-apple-red dark:bg-apple-red-dark text-white text-caption-2 rounded-full flex items-center justify-center">
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 bg-apple-red text-white text-[10px] p-0 rounded-full flex items-center justify-center border-2 border-white dark:border-neutral-950">
                     {itemCount}
                   </Badge>
                 )}
@@ -145,21 +150,23 @@ export function Navigation() { // Rebuild trigger
             </Link>
 
             {/* Theme Toggle */}
-            <Button onClick={toggleTheme} variant="ghost" size="icon">
+            <Button onClick={toggleTheme} variant="ghost" size="icon" className="hover:bg-apple-gray-6 dark:hover:bg-white/10">
               <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             </Button>
+
+            <div className="h-6 w-px bg-gray-200 dark:bg-white/10 mx-2" />
 
             {/* User Menu or Auth */}
             {isAuthenticated ? (
               <UserMenu />
             ) : (
               <div className="flex items-center space-x-2">
-                <Button variant="ghost" asChild>
-                  <Link href="/auth">Iniciar Sesión</Link>
+                <Button variant="ghost" asChild className="hover:bg-apple-gray-6 dark:hover:bg-white/10">
+                  <Link href="/auth">Ingresar</Link>
                 </Button>
-                <Button asChild>
-                  <Link href="/auth">Registrarse</Link>
+                <Button asChild className="bg-apple-blue hover:bg-blue-600 text-white">
+                  <Link href="/auth">Registro</Link>
                 </Button>
               </div>
             )}
@@ -171,7 +178,7 @@ export function Navigation() { // Rebuild trigger
               <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="h-6 w-6" />
                 {itemCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-4 w-4 bg-apple-red text-white text-caption-2 rounded-full flex items-center justify-center">
+                  <Badge className="absolute -top-1 -right-1 h-4 w-4 bg-apple-red text-white text-[10px] rounded-full flex items-center justify-center">
                     {itemCount}
                   </Badge>
                 )}
@@ -187,92 +194,80 @@ export function Navigation() { // Rebuild trigger
           </div>
         </div>
 
-        {/* Mobile Search Bar */}
+        {/* Mobile Search Bar (Collapsible) */}
         <div className="md:hidden pb-4">
-          <SearchBar onSearch={handleSearch} />
+          <SearchBar onSearch={handleSearch} placeholder="Buscar..." />
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu Content */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200 dark:border-gray-800">
-            <div className="flex flex-col space-y-4">
+          <div className="md:hidden py-4 border-t border-gray-200 dark:border-white/10 animate-in slide-in-from-top-2">
+            <div className="flex flex-col space-y-3 px-2">
               <Link
-                href="/categories"
-                className="text-body text-gray-700 dark:text-gray-300 hover:text-apple-blue transition-colors"
+                href="/products"
+                className="flex items-center p-2 rounded-lg hover:bg-apple-gray-6 dark:hover:bg-white/10"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Categorías
-              </Link>
-              <Link
-                href="/offers"
-                className="text-body text-gray-700 dark:text-gray-300 hover:text-apple-blue transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Ofertas
+                <Search className="w-5 h-5 mr-3 text-muted-foreground" />
+                Explorar Productos
               </Link>
 
-              <div className="flex items-center justify-between">
-                <span className="text-body text-gray-700 dark:text-gray-300">Tema</span>
-                <Button onClick={toggleTheme} variant="ghost" size="icon">
-                  <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                  <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                </Button>
+              <div className="flex items-center justify-between p-2 rounded-lg hover:bg-apple-gray-6 dark:hover:bg-white/10 cursor-pointer" onClick={toggleTheme}>
+                <div className="flex items-center">
+                  {theme === 'dark' ? <Moon className="w-5 h-5 mr-3" /> : <Sun className="w-5 h-5 mr-3" />}
+                  <span>Modo {theme === 'dark' ? 'Oscuro' : 'Claro'}</span>
+                </div>
               </div>
 
               {isAuthenticated ? (
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
-                  <div className="flex items-center space-x-2 mb-4">
-                    <div className="w-8 h-8 bg-gradient-to-br from-apple-blue to-apple-green rounded-full flex items-center justify-center">
-                      <span className="text-caption-1 font-semibold text-white">
-                        {user?.name[0] || "U"}
-                      </span>
+                <>
+                  <div className="border-t border-gray-200 dark:border-white/10 my-2" />
+                  <div className="flex items-center p-2 space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-apple-blue to-apple-green rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold">{user?.name?.[0]?.toUpperCase()}</span>
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{user?.name}</p>
+                      <p className="font-medium">{user?.name}</p>
                       <p className="text-xs text-muted-foreground">{user?.email}</p>
                     </div>
                   </div>
+
                   <Link
                     href="/orders"
-                    className="block text-body text-gray-700 dark:text-gray-300 hover:text-apple-blue transition-colors mb-2"
+                    className="flex items-center p-2 rounded-lg hover:bg-apple-gray-6 dark:hover:bg-white/10"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
+                    <Package className="w-5 h-5 mr-3 text-muted-foreground" />
                     Mis Órdenes
                   </Link>
+
                   {user?.role === "seller" && (
                     <Link
-                      href="/seller"
-                      className="block text-body text-gray-700 dark:text-gray-300 hover:text-apple-blue transition-colors mb-2"
+                      href="/seller/dashboard"
+                      className="flex items-center p-2 rounded-lg hover:bg-apple-gray-6 dark:hover:bg-white/10"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
+                      <LayoutDashboard className="w-5 h-5 mr-3 text-muted-foreground" />
                       Panel de Vendedor
                     </Link>
                   )}
-                  {user?.role === "admin" && (
-                    <Link
-                      href="/admin"
-                      className="block text-body text-gray-700 dark:text-gray-300 hover:text-apple-blue transition-colors mb-2"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Panel Admin
-                    </Link>
-                  )}
+
                   <Button
                     onClick={handleLogout}
                     variant="ghost"
-                    className="text-red-600 p-0"
+                    className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
                   >
                     Cerrar Sesión
                   </Button>
-                </div>
+                </>
               ) : (
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
-                  <Button variant="ghost" asChild className="w-full justify-start">
+                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-200 dark:border-white/10">
+                  <Button variant="outline" asChild className="w-full">
                     <Link href="/auth" onClick={() => setIsMobileMenuOpen(false)}>
-                      Iniciar Sesión
+                      Ingresar
                     </Link>
                   </Button>
-                  <Button asChild className="w-full">
+                  <Button asChild className="w-full bg-apple-blue">
                     <Link href="/auth" onClick={() => setIsMobileMenuOpen(false)}>
                       Registrarse
                     </Link>

@@ -8,11 +8,18 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
-  const [searchParams] = useState(() => new URLSearchParams(window.location.search));
-  const searchQuery = searchParams.get("search") || "";
+
+  // --- CORRECCIÓN 1: Búsqueda Reactiva ---
+  // Escuchamos cambios en la URL para actualizar la búsqueda sin recargar
+  const getSearchParams = () => new URLSearchParams(window.location.search);
+  const [searchQuery, setSearchQuery] = useState(getSearchParams().get("search") || "");
+
+  useEffect(() => {
+    setSearchQuery(getSearchParams().get("search") || "");
+  }, [location]);
 
   const [categoryId, setCategoryId] = useState("all");
   const [priceRange, setPriceRange] = useState("all");
@@ -21,13 +28,16 @@ export default function Home() {
   const [sortBy, setSortBy] = useState("featured");
   const [limit, setLimit] = useState(20);
 
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ["/api/products", { search: searchQuery, category: categoryId, priceRange, brand, shipping, sortBy, limit }],
+  // --- CORRECCIÓN 2: Data Fetching Optimizado ---
+  const { data: products = [], isLoading, isFetching } = useQuery({
+    // Incluimos todas las dependencias en la queryKey para refresco automático
+    queryKey: ["products", { search: searchQuery, category: categoryId, priceRange, brand, shipping, sortBy, limit }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (searchQuery) params.append("search", searchQuery);
       if (categoryId !== "all") params.append("category", categoryId);
-      // Translate priceRange into minPrice / maxPrice for backend filtering
+
+      // Lógica de precios
       if (priceRange !== "all") {
         if (priceRange === "0-50000") {
           params.append("minPrice", "0");
@@ -39,15 +49,19 @@ export default function Home() {
           params.append("minPrice", "200000");
         }
       }
+
       if (brand !== "all") params.append("brand", brand);
-      if (shipping !== "all") params.append("shipping", shipping);
+      if (shipping !== "all") params.append("shipping", shipping); // Backend debe manejar esto o mapear a isFreeShipping
       if (sortBy !== "featured") params.append("sort", sortBy);
       params.append("limit", limit.toString());
 
-      const response = await fetch(`/api/products?${params}`);
+      const response = await fetch(`/api/products?${params.toString()}`);
       if (!response.ok) throw new Error("Failed to fetch products");
       return response.json();
     },
+    // IMPORTANTE: staleTime en 0 para que los filtros apliquen al instante
+    staleTime: 0,
+    placeholderData: (previousData) => previousData,
   });
 
   const quickFilters = [
@@ -59,9 +73,29 @@ export default function Home() {
     { icon: Truck, label: "🚚 Envío Gratis", filter: "free-shipping" },
   ];
 
+  // --- CORRECCIÓN 3: Navegación SPA ---
   const handleProductView = (productId: string) => {
-    console.log('[Home] Navigating to product ID:', productId);
     setLocation(`/product/${productId}`);
+  };
+
+  const handleExploreClick = () => {
+    setLocation("/products");
+  };
+
+  const handleSellClick = () => {
+    if (!isAuthenticated) {
+      setLocation("/auth");
+    } else if (isAuthenticated && user?.role === "seller") {
+      setLocation("/seller/dashboard");
+    } else {
+      toast({
+        title: "Registro Requerido",
+        description: "Para vender en Silicon Trail, necesitas una cuenta de vendedor.",
+      });
+      setTimeout(() => {
+        setLocation("/seller/profile"); // Redirigir a crear perfil
+      }, 1500);
+    }
   };
 
   const floatingIcons = [
@@ -72,7 +106,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
+      {/* Hero Section (Diseño Original Intacto) */}
       <section className="relative overflow-hidden bg-gradient-to-br from-apple-gray-6 to-white dark:from-apple-dark-1 dark:to-black">
         <div className="gradient-mesh absolute inset-0"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -85,33 +119,13 @@ export default function Home() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button
-                onClick={() => {
-                  // Redirect to public products page
-                  window.location.href = "http://localhost:5000/products";
-                }}
+                onClick={handleExploreClick}
                 className="button-haptic px-8 py-4 bg-apple-blue dark:bg-apple-blue-dark text-white hover:bg-blue-600 dark:hover:bg-blue-5 shadow-apple-lg hover:shadow-glow-blue transition-all duration-200"
               >
                 Explorar Productos
               </Button>
               <Button
-                onClick={() => {
-                  if (!isAuthenticated) {
-                    // Not logged in – go to registration / login page
-                    window.location.href = "http://localhost:5000/auth";
-                  } else if (isAuthenticated && user?.role === "seller") {
-                    // Seller – go to dashboard
-                    window.location.href = "http://localhost:5000/seller/dashboard";
-                  } else {
-                    // Buyer – show message and redirect to seller registration
-                    toast({
-                      title: "Registro Requerido",
-                      description: "Para vender en Silicon Trail, necesitas una cuenta de vendedor.",
-                    });
-                    setTimeout(() => {
-                      window.location.href = "http://localhost:5000/auth";
-                    }, 1500);
-                  }
-                }}
+                onClick={handleSellClick}
                 variant="outline"
                 className="button-haptic px-8 py-4 bg-white dark:bg-apple-dark-2 text-apple-blue dark:text-apple-blue-dark border-apple-blue dark:border-apple-blue-dark hover:bg-apple-blue hover:text-white dark:hover:bg-apple-blue-dark transition-all duration-200"
               >
@@ -210,71 +224,71 @@ export default function Home() {
           </div>
 
           {/* Products Grid */}
-          {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="bg-white dark:bg-apple-dark-2 rounded-2xl overflow-hidden shadow-apple border border-apple-gray-5 dark:border-apple-dark-3 animate-pulse">
-                  <div className="w-full h-48 bg-apple-gray-5 dark:bg-apple-dark-3" />
-                  <div className="p-4 space-y-4">
-                    <div className="h-4 bg-apple-gray-5 dark:bg-apple-dark-3 rounded" />
-                    <div className="h-6 bg-apple-gray-5 dark:bg-apple-dark-3 rounded w-1/2" />
-                    <div className="h-4 bg-apple-gray-5 dark:bg-apple-dark-3 rounded w-3/4" />
-                    <div className="h-10 bg-apple-gray-5 dark:bg-apple-dark-3 rounded" />
+          <div className={`transition-opacity duration-200 ${isFetching && !isLoading ? "opacity-50" : "opacity-100"}`}>
+
+            {isLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="bg-white dark:bg-apple-dark-2 rounded-2xl overflow-hidden shadow-apple border border-apple-gray-5 dark:border-apple-dark-3 animate-pulse">
+                    <div className="w-full h-48 bg-apple-gray-5 dark:bg-apple-dark-3" />
+                    <div className="p-4 space-y-4">
+                      <div className="h-4 bg-apple-gray-5 dark:bg-apple-dark-3 rounded" />
+                      <div className="h-6 bg-apple-gray-5 dark:bg-apple-dark-3 rounded w-1/2" />
+                      <div className="h-4 bg-apple-gray-5 dark:bg-apple-dark-3 rounded w-3/4" />
+                      <div className="h-10 bg-apple-gray-5 dark:bg-apple-dark-3 rounded" />
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : products.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 bg-apple-gray-5 dark:bg-apple-dark-3 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Smartphone className="w-8 h-8 text-apple-gray-1" />
+                ))}
               </div>
-              <h3 className="text-headline font-semibold mb-2">No se encontraron productos</h3>
-              <p className="text-body text-apple-gray-1 mb-6">
-                {searchQuery
-                  ? `No hay productos que coincidan con "${searchQuery}"`
-                  : "Aún no hay productos disponibles"
-                }
-              </p>
-              {searchQuery && (
-                <Button onClick={() => setLocation("/")}>
-                  Ver todos los productos
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
-              {products.map((product: any) => (
-                <ProductCard
-                  key={product.id}
-                  product={{
-                    ...product,
-                    price: product.price, // Ensure price is passed correctly (API returns price/priceCents, check storage.ts)
-                    // storage.ts aggregation returns 'price' as 'firstVariant.priceCents'. 
-                    // Wait, ProductCard likely expects price in cents or main unit? 
-                    // Let's check ProductCard. usually it expects cents if it formats it, or we format it here.
-                    // storage.ts aggregation: price: "$firstVariant.priceCents"
-                    // So product.price is in cents.
-                    rating: product.rating || 0,
-                    reviewCount: product.reviewCount || 0,
-                    seller: {
-                      displayName: product.seller?.displayName || product.sellerName || "Vendedor",
-                      location: product.seller?.location || "Santiago, Chile"
-                    },
-                    trending: false, // Logic for trending?
-                    freeShipping: product.isFreeShipping,
-                    shippingCost: product.shippingCostCents,
-                    discountPercentage: product.discountPercentage,
-                    stock: product.stock,
-                  }}
-                  onView={handleProductView}
-                />
-              ))}
-            </div>
-          )}
+            ) : products.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-apple-gray-5 dark:bg-apple-dark-3 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Smartphone className="w-8 h-8 text-apple-gray-1" />
+                </div>
+                <h3 className="text-headline font-semibold mb-2">No se encontraron productos</h3>
+                <p className="text-body text-apple-gray-1 mb-6">
+                  {searchQuery
+                    ? `No hay productos que coincidan con "${searchQuery}"`
+                    : "Aún no hay productos disponibles"
+                  }
+                </p>
+                {searchQuery && (
+                  <Button onClick={() => setLocation("/")}>
+                    Ver todos los productos
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
+                {products.map((product: any) => (
+                  <ProductCard
+                    key={product.id}
+                    product={{
+                      ...product,
+                      // --- CORRECCIÓN 4: Mapeo de datos para ProductCard ---
+                      // Aseguramos que los campos coincidan con lo que envía el Backend
+                      price: product.price,
+                      rating: product.rating || 0,
+                      reviewCount: product.reviewCount || 0,
+                      seller: {
+                        displayName: product.seller?.displayName || product.sellerName || "Vendedor",
+                        location: product.seller?.location || "Santiago, Chile"
+                      },
+                      trending: false,
+                      freeShipping: product.isFreeShipping,
+                      shippingCost: product.shippingCostCents,
+                      discountPercentage: product.discountPercentage,
+                      stock: product.stock,
+                    }}
+                    onView={handleProductView}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Load More */}
-          {products.length > 0 && (
+          {products.length > 0 && products.length >= limit && (
             <div className="text-center">
               <Button
                 variant="outline"
@@ -288,7 +302,7 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Footer */}
+      {/* Footer (Diseño Original Intacto) */}
       <footer className="bg-apple-gray-6 dark:bg-apple-dark-1 border-t border-apple-gray-5 dark:border-apple-dark-3 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">

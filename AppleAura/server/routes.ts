@@ -158,7 +158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       title,
       description,
       categoryId,
-      brand,
+      brand, 
       slug: slug || title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, ''),
       images: images || [],
       status: status || 'draft',
@@ -194,19 +194,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (stock !== undefined) variantUpdates.stock = parseInt(stock, 10);
     if (sku !== undefined) variantUpdates.sku = sku;
     if (discountPercentage !== undefined) variantUpdates.discountPercentage = parseInt(discountPercentage, 10);
-
+    
     // Si isFreeShipping es true, forzamos shippingCostCents a 0
     const isFree = String(isFreeShipping) === 'true';
     if (isFreeShipping !== undefined) {
       variantUpdates.isFreeShipping = isFree;
       if (isFree) {
-        variantUpdates.shippingCostCents = 0;
+        variantUpdates.shippingCostCents = 0; 
       } else if (shippingCost !== undefined) {
         variantUpdates.shippingCostCents = Math.floor(parseFloat(shippingCost) * 100);
       }
     } else if (shippingCost !== undefined) {
-      // Caso de compatibilidad si solo envían el costo
-      variantUpdates.shippingCostCents = Math.floor(parseFloat(shippingCost) * 100);
+        // Caso de compatibilidad si solo envían el costo
+        variantUpdates.shippingCostCents = Math.floor(parseFloat(shippingCost) * 100);
     }
 
     res.json(await storage.updateProduct(req.params.id, updates, variantUpdates));

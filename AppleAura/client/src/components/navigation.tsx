@@ -34,13 +34,10 @@ export function Navigation() {
   const { user, logout, isAuthenticated } = useAuth();
   const { itemCount } = useCart();
 
-  // CORRECCIÓN: Redirigir siempre a /products con el query
   const handleSearch = (query: string) => {
     if (query.trim()) {
-      // Usamos /products porque ahí vive la lógica de filtrado que arreglamos antes
       setLocation(`/products?search=${encodeURIComponent(query)}`);
     } else {
-      // Si la búsqueda está vacía, ir a productos sin filtros
       setLocation("/products");
     }
   };
@@ -116,7 +113,6 @@ export function Navigation() {
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
             <div className="w-10 h-10 bg-gradient-to-br from-apple-blue to-tech-blue rounded-lg flex items-center justify-center text-white">
-              {/* Si no tienes logo.png, usamos un icono como fallback */}
               <Zap className="w-6 h-6" fill="currentColor" />
             </div>
             <span className="text-title-2 font-bold hidden sm:block bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300">
@@ -134,6 +130,14 @@ export function Navigation() {
             <Link href="/products">
               <Button variant="ghost" className="text-sm font-medium hover:bg-apple-gray-6 dark:hover:bg-white/10">
                 Productos
+              </Button>
+            </Link>
+
+            {/* BOTÓN DE OFERTAS AGREGADO */}
+            <Link href="/offers">
+              <Button variant="ghost" className="text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-500 dark:hover:bg-red-950/30">
+                <Zap className="w-4 h-4 mr-1.5" fill="currentColor" />
+                Ofertas
               </Button>
             </Link>
 
@@ -210,6 +214,16 @@ export function Navigation() {
               >
                 <Search className="w-5 h-5 mr-3 text-muted-foreground" />
                 Explorar Productos
+              </Link>
+
+              {/* ENLACE DE OFERTAS MÓVIL AGREGADO */}
+              <Link
+                href="/offers"
+                className="flex items-center p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600 dark:text-red-500 font-medium"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Zap className="w-5 h-5 mr-3" fill="currentColor" />
+                Ofertas Especiales
               </Link>
 
               <div className="flex items-center justify-between p-2 rounded-lg hover:bg-apple-gray-6 dark:hover:bg-white/10 cursor-pointer" onClick={toggleTheme}>

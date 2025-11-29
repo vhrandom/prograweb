@@ -12,8 +12,7 @@ export default function Home() {
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
 
-  // --- CORRECCIÓN 1: Búsqueda Reactiva ---
-  // Escuchamos cambios en la URL para actualizar la búsqueda sin recargar
+  // --- Búsqueda Reactiva ---
   const getSearchParams = () => new URLSearchParams(window.location.search);
   const [searchQuery, setSearchQuery] = useState(getSearchParams().get("search") || "");
 
@@ -28,9 +27,8 @@ export default function Home() {
   const [sortBy, setSortBy] = useState("featured");
   const [limit, setLimit] = useState(20);
 
-  // --- CORRECCIÓN 2: Data Fetching Optimizado ---
+  // --- Data Fetching ---
   const { data: products = [], isLoading, isFetching } = useQuery({
-    // Incluimos todas las dependencias en la queryKey para refresco automático
     queryKey: ["products", { search: searchQuery, category: categoryId, priceRange, brand, shipping, sortBy, limit }],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -51,7 +49,7 @@ export default function Home() {
       }
 
       if (brand !== "all") params.append("brand", brand);
-      if (shipping !== "all") params.append("shipping", shipping); // Backend debe manejar esto o mapear a isFreeShipping
+      if (shipping !== "all") params.append("shipping", shipping);
       if (sortBy !== "featured") params.append("sort", sortBy);
       params.append("limit", limit.toString());
 
@@ -59,7 +57,6 @@ export default function Home() {
       if (!response.ok) throw new Error("Failed to fetch products");
       return response.json();
     },
-    // IMPORTANTE: staleTime en 0 para que los filtros apliquen al instante
     staleTime: 0,
     placeholderData: (previousData) => previousData,
   });
@@ -73,7 +70,6 @@ export default function Home() {
     { icon: Truck, label: "🚚 Envío Gratis", filter: "free-shipping" },
   ];
 
-  // --- CORRECCIÓN 3: Navegación SPA ---
   const handleProductView = (productId: string) => {
     setLocation(`/product/${productId}`);
   };
@@ -93,7 +89,7 @@ export default function Home() {
         description: "Para vender en Silicon Trail, necesitas una cuenta de vendedor.",
       });
       setTimeout(() => {
-        setLocation("/seller/profile"); // Redirigir a crear perfil
+        setLocation("/seller/profile");
       }, 1500);
     }
   };
@@ -106,7 +102,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section (Diseño Original Intacto) */}
+      {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-apple-gray-6 to-white dark:from-apple-dark-1 dark:to-black">
         <div className="gradient-mesh absolute inset-0"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -197,6 +193,8 @@ export default function Home() {
                 <option value="Samsung">Samsung</option>
                 <option value="Sony">Sony</option>
                 <option value="NVIDIA">NVIDIA</option>
+                {/* CORRECCIÓN: Agregado Genérico para coincidir con panel vendedor */}
+                <option value="Generico">Genérico</option>
               </select>
               <select
                 value={shipping}
@@ -265,9 +263,9 @@ export default function Home() {
                     key={product.id}
                     product={{
                       ...product,
-                      // --- CORRECCIÓN 4: Mapeo de datos para ProductCard ---
-                      // Aseguramos que los campos coincidan con lo que envía el Backend
-                      price: product.price,
+                      // --- CORRECCIÓN CRÍTICA DE PRECIO ---
+                      // Dividimos por 100 porque el backend envía centavos
+                      price: product.price / 100,
                       rating: product.rating || 0,
                       reviewCount: product.reviewCount || 0,
                       seller: {
@@ -276,7 +274,8 @@ export default function Home() {
                       },
                       trending: false,
                       freeShipping: product.isFreeShipping,
-                      shippingCost: product.shippingCostCents,
+                      // Dividimos el costo de envío también
+                      shippingCost: product.shippingCostCents ? product.shippingCostCents / 100 : 0,
                       discountPercentage: product.discountPercentage,
                       stock: product.stock,
                     }}
@@ -302,7 +301,7 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Footer (Diseño Original Intacto) */}
+      {/* Footer */}
       <footer className="bg-apple-gray-6 dark:bg-apple-dark-1 border-t border-apple-gray-5 dark:border-apple-dark-3 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">

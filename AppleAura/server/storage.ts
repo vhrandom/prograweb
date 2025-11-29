@@ -182,13 +182,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // =================================================================
-  // GET PRODUCTS: Con corrección para "Variante Virtual" (Legacy Fix)
+  // GET PRODUCTS: LÓGICA CORREGIDA Y FILTRO DE OFERTAS ESTRICTO
   // =================================================================
   async getProducts(filters: any = {}): Promise<Product[]> {
     const col = await this._getCollection("products");
     const pipeline: any[] = [];
 
-    // 1. Match Stage
+    // 1. Match Stage (Filtros iniciales)
     const match: any = {};
     if (filters.search) match.$or = [{ title: new RegExp(filters.search, "i") }, { description: new RegExp(filters.search, "i") }];
     if (filters.categoryId) match.categoryId = filters.categoryId;
@@ -204,16 +204,15 @@ export class DatabaseStorage implements IStorage {
 
     if (Object.keys(match).length) pipeline.push({ $match: match });
 
-    // 2. Lookups
+    // 2. Lookups (Unir colecciones)
     pipeline.push(
       { $lookup: { from: "product_variants", localField: "id", foreignField: "productId", as: "variants" } },
       { $addFields: { firstVariant: { $arrayElemAt: ["$variants", 0] } } },
-
       { $lookup: { from: "seller_profiles", localField: "sellerId", foreignField: "id", as: "sellerProfile" } },
       { $unwind: { path: "$sellerProfile", preserveNullAndEmptyArrays: true } }
     );
 
-    // 3. Lookup Reseñas (Opción Nuclear)
+    // 3. Lookup Reseñas
     pipeline.push({
       $lookup: {
         from: "reviews",
@@ -235,7 +234,6 @@ export class DatabaseStorage implements IStorage {
       }
     });
 
-    // Rating
     pipeline.push({
       $addFields: {
         reviewCount: { $size: "$reviews" },
@@ -245,7 +243,7 @@ export class DatabaseStorage implements IStorage {
 
     const rawProducts = await col.aggregate(pipeline).toArray();
 
-    // 5. Normalización y VARIANTE VIRTUAL
+    // 4. Procesamiento final, normalización y FILTRO DE OFERTAS
     return await Promise.all(rawProducts.map(async (p) => {
       let sellerName = p.sellerProfile?.displayName;
       if (!sellerName && p.sellerProfile?.userId) {
@@ -260,20 +258,16 @@ export class DatabaseStorage implements IStorage {
         location: p.sellerProfile?.location || ""
       };
 
-      // --- LOGICA DE FALLBACK PARA PRODUCTOS ANTIGUOS ---
       let finalVariants = this._normalizeArray(p.variants || []);
 
-      // Si el producto no tiene variantes reales, creamos una virtual
       if (finalVariants.length === 0) {
         const legacyPrice = p.priceCents || (p.price ? p.price * 100 : 0) || 0;
-        const legacyStock = p.stock || 0;
-
         finalVariants = [{
-          id: p._id ? p._id.toString() : p.id, // El ID de la variante es el mismo del producto
+          id: p._id ? p._id.toString() : p.id,
           productId: p.id,
           sku: p.sku || "LEGACY",
           priceCents: legacyPrice,
-          stock: legacyStock,
+          stock: p.stock || 0,
           discountPercentage: p.discountPercentage || 0,
           isFreeShipping: !!p.isFreeShipping,
           currency: "CLP",
@@ -281,25 +275,38 @@ export class DatabaseStorage implements IStorage {
         } as any];
       }
 
-      // Usamos el precio de la primera variante (real o virtual) para filtrar
       const mainVariant = finalVariants[0];
       const displayPrice = mainVariant?.priceCents || 0;
+      const discount = mainVariant?.discountPercentage || 0;
 
-      // Filtros manuales de precio
+      // --- APLICACIÓN DE FILTROS ---
+
+      // Filtro de Precio
       if (filters.minPrice && displayPrice < filters.minPrice) return null;
       if (filters.maxPrice && displayPrice > filters.maxPrice) return null;
+
+      // Filtro de Ofertas (CORREGIDO): Si se piden ofertas, descartar productos sin descuento
+      if (filters.hasDiscount && discount <= 0) return null;
+
+      // --- DATOS FINALES ---
+      const finalSku = mainVariant?.sku || p.sku || "N/A";
+      const shippingCost = mainVariant?.shippingCostCents || 0;
 
       return this._normalize({
         ...p,
         seller: enrichedSeller,
         sellerName: sellerName,
         reviews: this._normalizeArray(p.reviews || []),
-        variants: finalVariants, // Enviamos las variantes normalizadas
+        variants: finalVariants,
 
-        // Propiedades raíz para compatibilidad con tarjetas
         price: displayPrice,
         priceCents: displayPrice,
         stock: mainVariant?.stock || 0,
+        sku: finalSku, // SKU Correcto
+
+        shippingCostCents: shippingCost, // Costo de Envío Correcto
+        isFreeShipping: !!mainVariant?.isFreeShipping,
+        discountPercentage: discount, // Descuento Correcto
 
         id: p._id ? p._id.toString() : p.id
       })!;
@@ -334,8 +341,6 @@ export class DatabaseStorage implements IStorage {
 
     if (variantUpdates && Object.keys(variantUpdates).length) {
       const variantsCol = await this._getCollection<ProductVariant>("product_variants");
-      // Si existen variantes, las actualizamos. Si no, deberíamos crear una? 
-      // Por simplicidad, asumimos que si editas, ya se migró a variante virtual al leer.
       await variantsCol.updateMany({ productId: id }, { $set: variantUpdates });
     }
     return this.getProductById(id);
@@ -355,18 +360,13 @@ export class DatabaseStorage implements IStorage {
     await reviewsCol.deleteMany({ productId: id });
   }
 
-  // =================================================================
-  // GET VARIANTS: Con corrección para "Variante Virtual" (Legacy Fix)
-  // =================================================================
   async getVariantsByProductId(productId: string): Promise<ProductVariant[]> {
     const col = await this._getCollection<ProductVariant>("product_variants");
     const variants = await col.find({ productId }).toArray();
     const normalizedVariants = this._normalizeArray(variants);
 
-    // SI HAY VARIANTE REAL, RETURN
     if (normalizedVariants.length > 0) return normalizedVariants;
 
-    // SI NO, GENERAR VIRTUAL
     const product = await this.getProductById(productId);
     if (product) {
       return [{
@@ -397,25 +397,18 @@ export class DatabaseStorage implements IStorage {
     return this._normalize(doc)!;
   }
 
-  // --- Cart ---
   async getCartByUserId(userId: string): Promise<CartItem[]> {
     const col = await this._getCollection<CartItem>("cart_items");
     const items = await col.find({ userId }).toArray();
 
     return await Promise.all(items.map(async (item) => {
       const variant = await this.getVariantById(item.variantId);
-      // Fallback: Si la variante no existe en DB, intentamos buscarla en la virtual del producto
-      // Esto es complejo aquí, pero asumimos que si se añadió al carrito, el ID es válido.
-      // Si falla, es porque se borró el producto.
-
       const product = variant ? await this.getProductById(variant.productId) : null;
 
-      // Si el producto existe pero la variante no (caso legacy raro), reintentamos buscar producto por el ID de variante
       let finalProduct = product;
       let finalVariant = variant;
 
       if (!product && !variant) {
-        // Quizás el item.variantId es en realidad un productId (caso legacy virtual)
         const p = await this.getProductById(item.variantId);
         if (p) {
           finalProduct = p;
@@ -453,7 +446,6 @@ export class DatabaseStorage implements IStorage {
     await col.deleteMany({ userId });
   }
 
-  // --- Orders ---
   async getOrdersBySellerId(sellerId: string): Promise<Order[]> {
     const col = await this._getCollection<Order>("orders");
     return this._normalizeArray(await col.find({ sellerId }).toArray());
@@ -477,7 +469,6 @@ export class DatabaseStorage implements IStorage {
     return this._normalize(doc)!;
   }
 
-  // --- Reviews & Stats ---
   async getReviewsByProductId(productId: string): Promise<Review[]> {
     const col = await this._getCollection<Review>("reviews");
     const filter = ObjectId.isValid(productId)
@@ -502,7 +493,6 @@ export class DatabaseStorage implements IStorage {
     return { productCount, orderCount, totalProducts: productCount, totalOrders: orderCount, totalRevenue: 0 };
   }
 
-  // --- Admin Analytics ---
   async getAdminStats(): Promise<any> {
     const db = await connectMongo();
     const totalUsers = dbSql.select().from(users).all().length;
@@ -551,7 +541,6 @@ export class DatabaseStorage implements IStorage {
     return this._normalize(await col.findOne(filter));
   }
 
-  // --- Images ---
   async uploadImage(buffer: Buffer, mimeType: string): Promise<string> {
     const col = await this._getCollection("images");
     const newId = new ObjectId();

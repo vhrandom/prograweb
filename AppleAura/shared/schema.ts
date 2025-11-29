@@ -90,6 +90,7 @@ export interface CartItem {
   variantId: string;
   quantity: number;
   productPrice: number;
+  discountPercentage?: number;
   productImage: string;
 }
 export type InsertCartItem = Omit<CartItem, 'id'> & Partial<Pick<CartItem, 'id'>>;

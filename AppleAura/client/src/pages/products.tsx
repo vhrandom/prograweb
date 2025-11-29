@@ -17,6 +17,15 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Filter, Search } from "lucide-react";
 
+// --- Constantes (Iguales a Home y Dashboard) ---
+const BRANDS = [
+    { value: "Apple", label: "Apple" },
+    { value: "Samsung", label: "Samsung" },
+    { value: "NVIDIA", label: "NVIDIA" },
+    { value: "Sony", label: "Sony" },
+    { value: "Generico", label: "Genérico" },
+];
+
 // Hook personalizado para "Debounce"
 function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = useState(value);
@@ -38,12 +47,14 @@ export default function Products() {
         maxPrice: 2000000,
         sort: "newest",
         hasDiscount: false,
+        brand: "all",
+        shipping: "all"
     });
 
-    // 2. Aplicamos Debounce SOLO a la búsqueda (espera 500ms al dejar de escribir)
+    // 2. Debounce para búsqueda
     const debouncedSearch = useDebounce(filters.search, 500);
 
-    // 3. Sincronizar URL cuando cambian los filtros
+    // 3. Sincronizar URL
     useEffect(() => {
         const params = new URLSearchParams();
         if (debouncedSearch) params.set("search", debouncedSearch);
@@ -52,31 +63,35 @@ export default function Products() {
         if (filters.maxPrice < 2000000) params.set("maxPrice", filters.maxPrice.toString());
         if (filters.sort !== "newest") params.set("sort", filters.sort);
         if (filters.hasDiscount) params.set("hasDiscount", "true");
+        if (filters.brand && filters.brand !== "all") params.set("brand", filters.brand);
+        if (filters.shipping && filters.shipping !== "all") params.set("shipping", filters.shipping);
 
         const newSearch = params.toString();
         if (window.location.search.replace("?", "") !== newSearch) {
             setLocation(`/products?${newSearch}`);
         }
-    }, [debouncedSearch, filters.category, filters.minPrice, filters.maxPrice, filters.sort, filters.hasDiscount, setLocation]);
+    }, [debouncedSearch, filters, setLocation]);
 
     // 4. Data Fetching
     const { data: products, isLoading } = useQuery({
-        // La clave incluye debouncedSearch para refetchear automático
-        queryKey: ["products", debouncedSearch, filters.category, filters.minPrice, filters.maxPrice, filters.sort, filters.hasDiscount],
+        queryKey: ["products", debouncedSearch, filters],
         queryFn: async () => {
             const params = new URLSearchParams();
             if (debouncedSearch) params.set("search", debouncedSearch);
             if (filters.category && filters.category !== "all") params.set("category", filters.category);
+
             params.set("minPrice", filters.minPrice.toString());
             if (filters.maxPrice) params.set("maxPrice", filters.maxPrice.toString());
+
             if (filters.sort) params.set("sort", filters.sort);
             if (filters.hasDiscount) params.set("hasDiscount", "true");
+            if (filters.brand && filters.brand !== "all") params.set("brand", filters.brand);
+            if (filters.shipping && filters.shipping !== "all") params.set("shipping", filters.shipping);
 
             const res = await fetch(`/api/products?${params.toString()}`);
             if (!res.ok) throw new Error("Failed to fetch products");
             return res.json();
         },
-        // IMPORTANTE: staleTime en 0 para búsqueda instantánea
         staleTime: 0,
     });
 
@@ -87,7 +102,7 @@ export default function Products() {
             if (!res.ok) return [];
             return res.json();
         },
-        staleTime: 1000 * 60 * 30, // Categorías sí pueden cachearse
+        staleTime: 1000 * 60 * 30,
     });
 
     const handleFilterChange = (key: string, value: any) => {
@@ -102,6 +117,8 @@ export default function Products() {
             maxPrice: 2000000,
             sort: "newest",
             hasDiscount: false,
+            brand: "all",
+            shipping: "all"
         });
     };
 
@@ -128,6 +145,7 @@ export default function Products() {
                 </div>
             </div>
 
+            {/* CATEGORÍA */}
             <div className="space-y-4">
                 <Label>Categoría</Label>
                 <div className="space-y-2">
@@ -144,6 +162,23 @@ export default function Products() {
                 </div>
             </div>
 
+            {/* MARCA */}
+            <div className="space-y-4">
+                <Label>Marca</Label>
+                <Select value={filters.brand} onValueChange={(v) => handleFilterChange("brand", v)}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        {BRANDS.map(b => (
+                            <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {/* PRECIO */}
             <div className="space-y-4">
                 <Label>Precio ($0 - $2.000.000)</Label>
                 <Slider
@@ -162,10 +197,19 @@ export default function Products() {
                 </div>
             </div>
 
+            {/* OTROS FILTROS */}
             <div className="space-y-4">
                 <div className="flex items-center space-x-2">
                     <Checkbox id="discount" checked={filters.hasDiscount} onCheckedChange={(c) => handleFilterChange("hasDiscount", c)} />
                     <Label htmlFor="discount" className="cursor-pointer">Solo Ofertas</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox
+                        id="shipping"
+                        checked={filters.shipping === "free"}
+                        onCheckedChange={(c) => handleFilterChange("shipping", c ? "free" : "all")}
+                    />
+                    <Label htmlFor="shipping" className="cursor-pointer">Envío Gratis</Label>
                 </div>
             </div>
         </div>
@@ -241,7 +285,26 @@ export default function Products() {
                             {products?.map((product: any) => (
                                 <ProductCard
                                     key={product.id}
-                                    product={product}
+                                    product={{
+                                        ...product,
+                                        // --- CORRECCIÓN: USAR PRECIO DIRECTO (NO DIVIDIR) ---
+                                        price: product.price,
+
+                                        rating: product.rating || 0,
+                                        reviewCount: product.reviewCount || 0,
+                                        seller: {
+                                            displayName: product.seller?.displayName || product.sellerName || "Vendedor",
+                                            location: product.seller?.location || "Santiago"
+                                        },
+
+                                        freeShipping: product.isFreeShipping,
+                                        // --- CORRECCIÓN: ENVÍO DIRECTO ---
+                                        shippingCost: product.shippingCostCents || 0,
+
+                                        discountPercentage: product.discountPercentage,
+                                        stock: product.stock,
+                                        // SKU eliminado visualmente
+                                    }}
                                     onView={(id) => setLocation(`/product/${id}`)}
                                 />
                             ))}

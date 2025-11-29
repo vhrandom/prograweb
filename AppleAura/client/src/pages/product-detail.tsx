@@ -59,15 +59,11 @@ export default function ProductDetail() {
 
   const currentVariant = variants.find((v: any) => v.id === selectedVariant) || variants[0];
 
-  // --- CORRECCIÓN MATEMÁTICA DE PRECIOS ---
-  // Antes: dbPrice se trataba como el final.
-  // Ahora: dbPrice se trata como el ORIGINAL (ej: 10.000)
-
+  // --- CÁLCULO DE PRECIOS CORREGIDO ---
+  // Eliminada la división por 100 para respetar el valor en Pesos de la BD
   const discount = currentVariant?.discountPercentage || 0;
-  const originalPrice = currentVariant?.priceCents || 0; // Precio Base (ej: 10.000)
+  const originalPrice = currentVariant?.priceCents || 0;
 
-  // Calculamos el precio final aplicando el descuento
-  // Ejemplo: 10.000 * (1 - 0.50) = 5.000
   const finalPrice = discount > 0
     ? Math.round(originalPrice * (1 - discount / 100))
     : originalPrice;
@@ -221,7 +217,6 @@ export default function ProductDetail() {
           {/* Product Gallery Premium */}
           <div className="space-y-6">
             <div className="aspect-square relative bg-white dark:bg-apple-dark-2 rounded-3xl overflow-hidden shadow-2xl border border-white/20 dark:border-white/10 group">
-              {/* Badge de Descuento Visualmente Corregido */}
               {discount > 0 && (
                 <div className="absolute top-4 left-4 z-20">
                   <Badge className="bg-red-500 hover:bg-red-600 text-white border-0 px-3 py-1.5 text-md font-bold shadow-lg">
@@ -256,7 +251,7 @@ export default function ProductDetail() {
           {/* Product Info */}
           <div className="space-y-8">
             <div>
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2">
                   {averageRating > 0 && (
                     <div className="flex items-center bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1 rounded-full border border-yellow-100 dark:border-yellow-900/30">
@@ -284,14 +279,23 @@ export default function ProductDetail() {
                 </div>
               </div>
 
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight leading-tight">
+              {/* Marca */}
+              {product.brand && (
+                <div className="mb-2">
+                  <Badge variant="outline" className="text-sm font-normal text-gray-500 border-gray-300 dark:text-gray-400 dark:border-gray-700">
+                    {product.brand}
+                  </Badge>
+                </div>
+              )}
+
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight leading-tight">
                 {product.title}
               </h1>
 
-              {/* SECCIÓN DE PRECIO CORREGIDA */}
+              {/* SKU ELIMINADO (No se renderiza) */}
+
               <div className="mb-8 pb-8 border-b border-gray-100 dark:border-gray-800">
                 <div className="flex flex-col gap-1">
-                  {/* Si hay descuento, mostramos el Precio Original (el alto) tachado */}
                   {discount > 0 && (
                     <div className="flex items-center gap-3">
                       <span className="text-lg text-gray-400 line-through decoration-red-400/50">
@@ -304,19 +308,18 @@ export default function ProductDetail() {
                   )}
 
                   <div className="flex items-center gap-4">
-                    {/* El precio grande ahora es el Final (con descuento aplicado) */}
                     <span className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">
                       {currentVariant ? formatPrice(finalPrice, currentVariant.currency) : ""}
                     </span>
                     <Badge className="px-3 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100">
-                      En stock
+                      {currentVariant?.stock > 0 ? "En stock" : "Agotado"}
                     </Badge>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Seller Info Premium */}
+            {/* Seller Info */}
             <div className="bg-gray-50 dark:bg-white/5 rounded-2xl p-4 flex items-center justify-between border border-gray-100 dark:border-white/10 hover:border-blue-200 dark:hover:border-blue-800 transition-colors cursor-pointer group">
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:scale-110 transition-transform">
@@ -350,14 +353,15 @@ export default function ProductDetail() {
                   </SelectTrigger>
                   <SelectContent>
                     {variants.map((variant: any) => {
-                      // Calculamos precio variante también
                       const vDiscount = variant.discountPercentage || 0;
-                      const vPrice = variant.priceCents;
+                      // Aquí también eliminamos la división por 100
+                      const vPrice = variant.priceCents || 0;
                       const vFinal = vDiscount > 0 ? Math.round(vPrice * (1 - vDiscount / 100)) : vPrice;
 
                       return (
                         <SelectItem key={variant.id} value={variant.id}>
-                          {variant.sku} - {formatPrice(vFinal, variant.currency)}
+                          {/* Muestra nombre de variante y precio sin SKU */}
+                          {variant.attributes?.color || "Opción"} - {formatPrice(vFinal, variant.currency)}
                         </SelectItem>
                       );
                     })}
@@ -391,28 +395,40 @@ export default function ProductDetail() {
             {/* Add to Cart */}
             <Button
               onClick={handleAddToCart}
-              disabled={isAdding || !currentVariant}
-              className="w-full button-haptic bg-apple-blue dark:bg-apple-blue-dark text-white hover:bg-blue-600 dark:hover:bg-blue-500 py-4 text-body font-semibold shadow-apple-lg transition-all duration-200"
+              disabled={isAdding || !currentVariant || currentVariant.stock === 0}
+              className="w-full button-haptic bg-apple-blue dark:bg-apple-blue-dark text-white hover:bg-blue-600 dark:hover:bg-blue-500 py-4 text-body font-semibold shadow-apple-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isAdding ? (
                 <div className="flex items-center space-x-2">
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   <span>Añadiendo al carrito...</span>
                 </div>
+              ) : currentVariant?.stock === 0 ? (
+                "Agotado"
               ) : (
                 "Añadir al carrito"
               )}
             </Button>
 
-            {/* Benefits */}
+            {/* Benefits & Shipping Cost */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-apple-gray-5 dark:border-apple-dark-3">
               <div className="flex items-center space-x-3">
                 <Shield className="w-5 h-5 text-apple-green" />
                 <span className="text-footnote">Garantía oficial</span>
               </div>
               <div className="flex items-center space-x-3">
-                <Truck className="w-5 h-5 text-apple-blue" />
-                <span className="text-footnote">{product.isFreeShipping ? "Envío gratis" : "Envío pagado"}</span>
+                <Truck className={`w-5 h-5 ${product.isFreeShipping ? "text-green-500" : "text-apple-blue"}`} />
+                <div className="flex flex-col">
+                  <span className="text-footnote font-medium">
+                    {product.isFreeShipping ? "Envío Gratis" : "Envío por pagar"}
+                  </span>
+                  {/* Eliminada división por 100 también en el envío */}
+                  {!product.isFreeShipping && product.shippingCostCents > 0 && (
+                    <span className="text-xs text-gray-500">
+                      ${(product.shippingCostCents).toLocaleString('es-CL')}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center space-x-3">
                 <RotateCcw className="w-5 h-5 text-apple-gray-1" />
@@ -422,7 +438,7 @@ export default function ProductDetail() {
           </div>
         </div>
 
-        {/* Product Details Tabs */}
+        {/* Product Details Tabs (Igual que antes) */}
         <Tabs defaultValue="description" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="description">Descripción</TabsTrigger>
@@ -432,7 +448,7 @@ export default function ProductDetail() {
 
           <TabsContent value="description" className="mt-6">
             <div className="bg-white dark:bg-apple-dark-2 rounded-2xl p-6 shadow-apple border border-apple-gray-5 dark:border-apple-dark-3">
-              <p className="text-body text-gray-700 dark:text-gray-300 leading-relaxed">
+              <p className="text-body text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                 {product.description || "No hay descripción disponible para este producto."}
               </p>
             </div>
@@ -457,7 +473,6 @@ export default function ProductDetail() {
 
           <TabsContent value="reviews" className="mt-6">
             <div className="space-y-6">
-              {/* Review Form */}
               {isAuthenticated && (
                 <div className="bg-white dark:bg-apple-dark-2 rounded-2xl p-6 shadow-apple border border-apple-gray-5 dark:border-apple-dark-3">
                   <h3 className="text-headline font-semibold mb-4">Escribir una reseña</h3>
@@ -484,7 +499,6 @@ export default function ProductDetail() {
                 </div>
               )}
 
-              {/* Reviews List */}
               <div className="space-y-4">
                 {reviews.length === 0 ? (
                   <div className="bg-white dark:bg-apple-dark-2 rounded-2xl p-8 shadow-apple border border-apple-gray-5 dark:border-apple-dark-3 text-center">
@@ -518,6 +532,6 @@ export default function ProductDetail() {
           </TabsContent>
         </Tabs>
       </div>
-    </div >
+    </div>
   );
 }

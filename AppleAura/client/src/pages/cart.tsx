@@ -62,12 +62,13 @@ export default function Cart() {
     }
   };
 
-  // Calcular totales (precios vienen en centavos desde el backend)
+  // --- CÁLCULO DE TOTALES ---
+  // Volvemos a la lógica original sin división, ya que el usuario indicó que se veía bien antes.
   const subtotal = items.reduce((acc, item) => {
     return acc + (item.productPrice * item.quantity);
   }, 0);
 
-  const shipping = subtotal > 50000 ? 0 : 5000; // Ejemplo: Envío gratis sobre 50.000
+  const shipping = subtotal > 50000 ? 0 : 5000;
   const total = subtotal + shipping;
 
   if (isLoading) {
@@ -133,7 +134,7 @@ export default function Cart() {
             <div className="lg:col-span-2 space-y-4">
               {items.map((item) => (
                 <div
-                  key={item.variantId} // Usamos variantId como key única
+                  key={item.variantId}
                   className="bg-card rounded-2xl p-4 sm:p-6 shadow-sm border hover:border-primary/50 transition-colors"
                 >
                   <div className="flex gap-4">
@@ -161,13 +162,12 @@ export default function Cart() {
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          SKU: {item.sku || "---"}
-                        </p>
+                        {/* SKU ELIMINADO: Ya no se muestra aquí */}
                       </div>
 
                       <div className="flex items-center justify-between mt-4">
                         <div className="font-bold text-lg text-primary">
+                          {/* Precio sin división extra, usando el valor directo */}
                           {formatPrice(item.productPrice)}
                         </div>
 
@@ -248,7 +248,6 @@ export default function Cart() {
                   </Button>
                 </div>
 
-                {/* Badges de Seguridad */}
                 <div className="mt-6 pt-6 border-t flex flex-col gap-2">
                   <div className="flex items-center text-xs text-muted-foreground">
                     <Shield className="w-4 h-4 mr-2 text-green-600" />

@@ -56,7 +56,26 @@ export default function Offers() {
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {products.map((product: any) => (
-                            <ProductCard key={product.id} product={product} onView={(id) => setLocation(`/product/${id}`)} />
+                            <ProductCard
+                                key={product.id}
+                                product={{
+                                    ...product,
+                                    // CORRECCIÓN CRÍTICA: Dividir precio por 100 y mapear propiedades
+                                    price: product.price / 100,
+                                    rating: product.rating || 0,
+                                    reviewCount: product.reviewCount || 0,
+                                    seller: {
+                                        displayName: product.seller?.displayName || product.sellerName || "Vendedor",
+                                        location: product.seller?.location || "Santiago"
+                                    },
+                                    freeShipping: product.isFreeShipping,
+                                    shippingCost: product.shippingCostCents ? product.shippingCostCents / 100 : 0,
+                                    discountPercentage: product.discountPercentage,
+                                    stock: product.stock,
+                                    sku: product.sku
+                                }}
+                                onView={(id) => setLocation(`/product/${id}`)}
+                            />
                         ))}
                     </div>
                 )}

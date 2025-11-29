@@ -132,7 +132,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/products/:id/reviews", asyncHandler(async (req, res) => {
     let productId = req.params.id;
-    // Resolver slug a ID si es necesario
     if (!ObjectId.isValid(productId)) {
       const product = await storage.getProductBySlug(productId);
       if (product) productId = product.id;
@@ -152,13 +151,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     if (!sellerId) return res.status(400).json({ message: "Seller ID missing" });
 
-    const { title, description, categoryId, slug, images, status, price, sku, stock, discountPercentage, shippingCost, isFreeShipping } = req.body;
+    const { title, description, categoryId, brand, slug, images, status, price, sku, stock, discountPercentage, shippingCost, isFreeShipping } = req.body;
 
     const productData = {
       sellerId,
       title,
       description,
       categoryId,
+      brand,
       slug: slug || title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, ''),
       images: images || [],
       status: status || 'draft',
@@ -177,6 +177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(product);
   }));
 
+  // --- CORRECCIÓN CLAVE EN EL PUT ---
   app.put('/api/products/:id', authenticateToken, requireRole(['seller', 'admin']), asyncHandler(async (req, res) => {
     const product = await storage.getProductById(req.params.id);
     if (!product) return res.status(404).json({ message: 'Product not found' });
@@ -186,14 +187,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (product.sellerId !== profile?.id) return res.status(403).json({ message: 'Access denied' });
     }
 
-    const { id, sellerId, price, stock, discountPercentage, shippingCost, isFreeShipping, ...updates } = req.body;
+    const { id, sellerId, price, stock, sku, discountPercentage, shippingCost, isFreeShipping, ...updates } = req.body;
 
     const variantUpdates: any = {};
     if (price !== undefined) variantUpdates.priceCents = Math.floor(parseFloat(price) * 100);
     if (stock !== undefined) variantUpdates.stock = parseInt(stock, 10);
+    if (sku !== undefined) variantUpdates.sku = sku;
     if (discountPercentage !== undefined) variantUpdates.discountPercentage = parseInt(discountPercentage, 10);
-    if (shippingCost !== undefined) variantUpdates.shippingCostCents = Math.floor(parseFloat(shippingCost) * 100);
-    if (isFreeShipping !== undefined) variantUpdates.isFreeShipping = String(isFreeShipping) === 'true';
+
+    // Si isFreeShipping es true, forzamos shippingCostCents a 0
+    const isFree = String(isFreeShipping) === 'true';
+    if (isFreeShipping !== undefined) {
+      variantUpdates.isFreeShipping = isFree;
+      if (isFree) {
+        variantUpdates.shippingCostCents = 0;
+      } else if (shippingCost !== undefined) {
+        variantUpdates.shippingCostCents = Math.floor(parseFloat(shippingCost) * 100);
+      }
+    } else if (shippingCost !== undefined) {
+      // Caso de compatibilidad si solo envían el costo
+      variantUpdates.shippingCostCents = Math.floor(parseFloat(shippingCost) * 100);
+    }
 
     res.json(await storage.updateProduct(req.params.id, updates, variantUpdates));
   }));

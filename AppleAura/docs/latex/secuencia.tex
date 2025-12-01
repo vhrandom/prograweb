@@ -1,0 +1,165 @@
+\documentclass{article}
+
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=2cm]{geometry}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc}
+
+\tikzset{
+  lifeline/.style={draw, rectangle, minimum width=3cm, minimum height=0.8cm, fill=gray!10},
+  message/.style={-Latex, thick},
+  returnmsg/.style={Latex-, thick, dashed},
+  frag/.style={draw, rounded corners, thick}
+}
+
+\begin{document}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[font=\footnotesize]
+
+%------------------------------------------------
+% PARTICIPANTES
+%------------------------------------------------
+\node[lifeline] (vendedor) at (0,0)  {Vendedor};
+\node[lifeline, right=3.5cm of vendedor] (web)  {Interfaz Web};
+\node[lifeline, right=3.5cm of web]   (back) {Backend};
+\node[lifeline, right=3.5cm of back]  (db)   {Base de Datos};
+
+% Líneas de vida
+\draw[densely dashed] (vendedor.south) -- ++(0,-16);
+\draw[densely dashed] (web.south)   -- ++(0,-16);
+\draw[densely dashed] (back.south)  -- ++(0,-16);
+\draw[densely dashed] (db.south)    -- ++(0,-16);
+
+%------------------------------------------------
+% 1. Inicializa Dashboard
+%------------------------------------------------
+\draw[message] ($(vendedor.south)+(0,-1.0)$)
+  -- node[above]{1: Accede a Mis Productos}
+     ($(web.south)+(0,-1.0)$);
+
+\draw[message] ($(web.south)+(0,-2.0)$)
+  -- node[above]{1.1: Solicita productos del vendedor}
+     ($(back.south)+(0,-2.0)$);
+
+\draw[message] ($(back.south)+(0,-3.0)$)
+  -- node[above]{1.1.1: Consulta productos (SellerID)}
+     ($(db.south)+(0,-3.0)$);
+
+\draw[returnmsg] ($(db.south)+(0,-4.0)$)
+  -- node[above]{1.1.2: Retorna lista de productos}
+     ($(back.south)+(0,-4.0)$);
+
+\draw[returnmsg] ($(back.south)+(0,-5.0)$)
+  -- node[above]{1.2: Muestra lista de productos}
+     ($(web.south)+(0,-5.0)$);
+
+%------------------------------------------------
+% sd Publicar Producto (marco)
+%------------------------------------------------
+\coordinate (f1-nw) at ($(vendedor.south west)+(-0.8,-5.5)$);
+\coordinate (f1-se) at ($(db.south east)+(0.8,-11.8)$);
+
+\draw[frag] (f1-nw) rectangle (f1-se);
+\node[anchor=west,font=\scriptsize\bfseries]
+  at ($(f1-nw)+(0.15,0.25)$) {sd Publicar Producto};
+
+% Mensajes dentro de "Publicar Producto"
+\draw[message] ($(vendedor.south)+(0,-6.3)$)
+  -- node[above]{2: Clic en "Nuevo Producto"}
+     ($(web.south)+(0,-6.3)$);
+
+\draw[returnmsg] ($(web.south)+(0,-7.1)$)
+  -- node[above]{2.1: Muestra formulario}
+     ($(vendedor.south)+(0,-7.1)$);
+
+\draw[message] ($(vendedor.south)+(0,-7.9)$)
+  -- node[above]{3: Completa datos y envía}
+     ($(web.south)+(0,-7.9)$);
+
+\draw[message] ($(web.south)+(0,-8.7)$)
+  -- node[above]{3.1: POST /api/products}
+     ($(back.south)+(0,-8.7)$);
+
+\draw[message] ($(back.south)+(0,-9.5)$)
+  -- node[above]{3.1.1: Insertar producto}
+     ($(db.south)+(0,-9.5)$);
+
+%------------------------------------------------
+% Fragmento alt
+%------------------------------------------------
+\coordinate (alt-nw) at ($(vendedor.south west)+(-0.4,-9.9)$);
+\coordinate (alt-se) at ($(db.south east)+(0.4,-11.6)$);
+
+\draw[frag] (alt-nw) rectangle (alt-se);
+% Línea que separa las dos alternativas
+\draw ( $(alt-nw)!0.5!(alt-se)$ -| alt-nw.x ) --
+      ( $(alt-nw)!0.5!(alt-se)$ -| alt-se.x );
+
+\node[anchor=west,font=\scriptsize\bfseries]
+  at ($(alt-nw)+(0.15,0.25)$) {alt};
+
+% Etiquetas de las ramas
+\node[anchor=west,font=\scriptsize]
+  at ($(alt-nw)+(0.3,-0.3)$) {[Datos válidos]};
+\node[anchor=west,font=\scriptsize]
+  at ($(alt-nw)+(0.3,-1.2)$) {[Error validación]};
+
+% Rama datos correctos
+\draw[returnmsg] ($(back.south)+(0,-10.3)$)
+  -- node[above]{3.2: Confirmación (201 Created)}
+     ($(web.south)+(0,-10.3)$);
+
+\draw[returnmsg] ($(web.south)+(0,-10.7)$)
+  -- node[above]{3.3: Muestra producto creado}
+     ($(vendedor.south)+(0,-10.7)$);
+
+% Rama datos incorrectos
+\draw[returnmsg] ($(db.south)+(0,-11.1)$)
+  -- node[below]{4: Fallo inserción / Validación}
+     ($(back.south)+(0,-11.1)$);
+
+\draw[returnmsg] ($(back.south)+(0,-11.5)$)
+  -- node[below]{4.1: Error (400 Bad Request)}
+     ($(web.south)+(0,-11.5)$);
+
+%------------------------------------------------
+% sd Ver Detalles (marco)
+%------------------------------------------------
+\coordinate (f2-nw) at ($(vendedor.south west)+(-0.8,-12.2)$);
+\coordinate (f2-se) at ($(db.south east)+(0.8,-15.5)$);
+
+\draw[frag] (f2-nw) rectangle (f2-se);
+\node[anchor=west,font=\scriptsize\bfseries]
+  at ($(f2-nw)+(0.15,0.25)$) {sd Ver Detalles};
+
+% Mensajes de detalles
+\draw[message] ($(vendedor.south)+(0,-13.0)$)
+  -- node[above]{5: Selecciona producto}
+     ($(web.south)+(0,-13.0)$);
+
+\draw[message] ($(web.south)+(0,-13.8)$)
+  -- node[above]{5.1: GET /api/products/:id}
+     ($(back.south)+(0,-13.8)$);
+
+\draw[message] ($(back.south)+(0,-14.6)$)
+  -- node[above]{5.1.1: FindById(id)}
+     ($(db.south)+(0,-14.6)$);
+
+\draw[returnmsg] ($(db.south)+(0,-15.0)$)
+  -- node[below]{5.1.2: Retorna documento}
+     ($(back.south)+(0,-15.0)$);
+
+\draw[returnmsg] ($(back.south)+(0,-15.4)$)
+  -- node[below]{5.2: JSON Producto}
+     ($(web.south)+(0,-15.4)$);
+
+\end{tikzpicture}
+\caption{Diagrama de secuencia: Gestión de Productos (Vendedor).}
+\end{figure}
+
+\end{document}

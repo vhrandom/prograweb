@@ -1,0 +1,184 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{tikz}
+\usepackage{geometry}
+
+\geometry{a4paper, margin=0.5in, landscape}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc}
+
+\begin{document}
+
+\begin{figure}[h]
+\centering
+
+\begin{tikzpicture}[
+    scale=0.9,
+    transform shape,
+    % --- ESTILOS (Blanco y Negro Limpio) ---
+    entity/.style={
+        rectangle,
+        draw=black,
+        thick,
+        fill=white,
+        minimum width=2.5cm,
+        minimum height=1.2cm,
+        align=center,
+        font=\bfseries
+    },
+    relationship/.style={
+        diamond,
+        aspect=1.5,
+        draw=black,
+        thick,
+        fill=white,
+        minimum width=2cm,
+        align=center,
+        font=\small\itshape,
+        inner sep=1pt
+    },
+    attribute/.style={
+        ellipse,
+        draw=black,
+        thick,
+        fill=white,
+        minimum width=1.5cm,
+        minimum height=0.7cm,
+        align=center,
+        font=\scriptsize,
+        inner sep=1pt
+    },
+    % clave primaria: mismo estilo que attribute pero SIN \underline
+    key_attribute/.style={
+        attribute,
+        font=\scriptsize\bfseries
+    },
+    link/.style={-, thick, draw=black},
+    card/.style={
+        font=\scriptsize\bfseries,
+        text=black,
+        fill=white,
+        inner sep=2pt
+    }
+]
+
+% ==========================================
+% 1. ESTRUCTURA PRINCIPAL (ENTIDADES)
+% ==========================================
+
+\node[entity] (Usuario)   at (0,   0)  {Usuario};
+\node[entity] (Vendedor)  at (-6,  0)  {Vendedor};
+\node[entity] (Pedido)    at (6,   0)  {Pedido};
+\node[entity] (Resena)    at (0,  -5)  {Reseña};
+\node[entity] (Producto)  at (-6, -5)  {Producto};
+\node[entity] (Categoria) at (-6, -11)  {Categoría};
+
+% ==========================================
+% 2. RELACIONES (DIAMANTES)
+% ==========================================
+
+\node[relationship] (RelUserSeller) at ($(Usuario)!0.5!(Vendedor)$)   {Tiene};
+\node[relationship] (RelUserOrder)  at ($(Usuario)!0.5!(Pedido)$)     {Realiza};
+\node[relationship] (RelUserReview) at ($(Usuario)!0.5!(Resena)$)     {Escribe};
+\node[relationship] (RelSellerProd) at ($(Vendedor)!0.5!(Producto)$)  {Publica};
+\node[relationship] (RelOrderProd)  at ($(Pedido)!0.5!(Producto)$)    {Contiene};
+\node[relationship] (RelReviewProd) at ($(Resena)!0.5!(Producto)$)    {Sobre};
+\node[relationship] (RelProdCat)    at ($(Producto)!0.5!(Categoria)$) {Pertenece};
+
+% ==========================================
+% 3. CONEXIONES Y CARDINALIDAD
+% ==========================================
+
+\draw[link] (Usuario)  -- node[card, pos=0.2]{1} (RelUserSeller)
+                      -- node[card, pos=0.8]{1} (Vendedor);
+
+\draw[link] (Usuario)  -- node[card, pos=0.2]{1} (RelUserOrder)
+                      -- node[card, pos=0.8]{N} (Pedido);
+
+\draw[link] (Usuario)  -- node[card, pos=0.2]{1} (RelUserReview)
+                      -- node[card, pos=0.8]{N} (Resena);
+
+\draw[link] (Vendedor) -- node[card, pos=0.2]{1} (RelSellerProd)
+                      -- node[card, pos=0.8]{N} (Producto);
+
+\draw[link] (Pedido)   -- node[card, pos=0.2]{N} (RelOrderProd)
+                      -- node[card, pos=0.8]{M} (Producto);
+
+\draw[link] (Resena)   -- node[card, pos=0.2]{N} (RelReviewProd)
+                      -- node[card, pos=0.8]{1} (Producto);
+
+\draw[link] (Producto) -- node[card, pos=0.2]{N} (RelProdCat)
+                      -- node[card, pos=0.8]{1} (Categoria);
+
+% ==========================================
+% 4. ATRIBUTOS
+% ==========================================
+
+% --- USUARIO ---
+\draw[link] (Usuario) -- ++(0.7,1.5)
+    node[key_attribute] {\underline{ID}};
+\draw[link] (Usuario) -- ++(-3,2)
+    node[attribute] {Nombre};
+\draw[link] (Usuario) -- ++(2.5,1.2)
+    node[attribute] {Email};
+\draw[link] (Usuario) -- ++(3,2.5)
+    node[attribute] {Rol};
+\draw[link] (Usuario) -- ++(-1,2)
+    node[attribute] {Password};
+
+% --- VENDEDOR ---
+\draw[link] (Vendedor) -- ++(1,1.5)
+    node[key_attribute] {\underline{ID}};
+\draw[link] (Vendedor) -- ++(-2.5,1.2)
+    node[attribute] {Nombre\\Tienda};
+\draw[link] (Vendedor) -- ++(-3,0)
+    node[attribute] {Rating};
+\draw[link] (Vendedor) -- ++(-2.5,-1.2)
+    node[attribute] {Ubicación};
+\draw[link] (Vendedor) -- ++(2.5,1.2)
+    node[attribute] {Estado};
+
+% --- PEDIDO ---
+\draw[link] (Pedido) -- ++(1,1.5)
+    node[key_attribute] {\underline{ID}};
+\draw[link] (Pedido) -- ++(2.8,1.0)
+    node[attribute] {Total};
+\draw[link] (Pedido) -- ++(3,0)
+    node[attribute] {Estado};
+\draw[link] (Pedido) -- ++(2.8,-1.0)
+    node[attribute] {Fecha};
+
+% --- RESEÑA ---
+\draw[link] (Resena) -- ++(1,-1.5)
+    node[key_attribute] {\underline{ID}};
+\draw[link] (Resena) -- ++(2.8,-1.0)
+    node[attribute] {Comentario};
+\draw[link] (Resena) -- ++(-2.8,-1.0)
+    node[attribute] {Calificación};
+
+% --- PRODUCTO ---
+\draw[link] (Producto) -- ++(-3,0)
+    node[key_attribute] {\underline{ID}};
+\draw[link] (Producto) -- ++(-2.8,1.0)
+    node[attribute] {Título};
+\draw[link] (Producto) -- ++(-2.8,-1.0)
+    node[attribute] {Precio};
+\draw[link] (Producto) -- ++(-1.5,-1.5)
+    node[attribute] {Stock};
+\draw[link] (Producto) -- ++(-1.5,1.5)
+    node[attribute] {Marca};
+
+% --- CATEGORÍA ---
+\draw[link] (Categoria) -- ++(-3,0)
+    node[key_attribute] {\underline{ID}};
+\draw[link] (Categoria) -- ++(3,0)
+    node[attribute] {Nombre};
+\draw[link] (Categoria) -- ++(0,-1.5)
+    node[attribute] {Icono};
+
+\end{tikzpicture}
+
+\caption{Diagrama Entidad-Relación - Silicon-Trail}
+\end{figure}
+
+\end{document}

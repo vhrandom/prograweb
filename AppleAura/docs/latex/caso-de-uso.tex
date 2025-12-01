@@ -1,0 +1,186 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{tikz}
+\usepackage{geometry}
+\usepackage{adjustbox} % Indispensable para ajustar el tamaño
+
+\geometry{a4paper, margin=0.5in, landscape}
+\usetikzlibrary{shapes.multipart, shapes.geometric, positioning, fit, calc, arrows.meta, bending}
+
+% --- DEFINICIÓN DEL ACTOR (Igual que antes) ---
+\tikzset{
+    actor/.pic={
+        \node[circle, fill, minimum size=5mm] (head) {};
+        \draw[thick] (head.south) -- ++(0,-1.5) coordinate (body);
+        \draw[thick] (head.south)++(0,-0.5) -- ++(-0.5,0); 
+        \draw[thick] (head.south)++(0,-0.5) -- ++(0.5,0);
+        \draw[thick] (body) -- ++(-0.5,-0.8); 
+        \draw[thick] (body) -- ++(0.5,-0.8);
+        \node[below=1.2cm of head, align=center, font=\bfseries] {\tikzpictext};
+    }
+}
+
+\begin{document}
+
+\begin{figure}[h]
+\centering
+
+\begin{adjustbox}{max width=\textwidth, max height=0.9\textheight, keepaspectratio}
+
+\begin{tikzpicture}[
+    % Estilos globales
+    node distance=2cm,
+    usecase/.style={
+        ellipse, 
+        draw=black!80, 
+        thick, 
+        align=center, 
+        fill=white, 
+        minimum width=1cm, 
+        minimum height=1.2cm,
+        font=\small
+    },
+    usecase_complex/.style={
+        ellipse split, 
+        draw=black!80, 
+        thick, 
+        align=center, 
+        fill=white, 
+        minimum width=3.5cm,
+        inner sep=3pt,
+        font=\small
+    },
+    line/.style={-, thick, draw=gray!40!black},
+    % Estilo para flechas de relación (dashed)
+    dashed_arrow/.style={
+        dashed, 
+        -{Latex[open]}, 
+        draw=black, 
+        font=\scriptsize, 
+        text=black
+    }
+]
+
+% ==========================================
+% 1. COLOCACIÓN DE NODOS (GRID ORDENADA)
+% ==========================================
+
+% --- ACTORES (Izquierda) ---
+\pic [pic text=Comprador] (Buyer) at (-10, 6) {actor};
+\pic [pic text=Vendedor] (Seller) at (-10, 0) {actor};
+\pic [pic text=Administrador] (Admin) at (-10, -6) {actor};
+
+% --- CASOS DE USO PRINCIPALES (Columna Central-Izquierda) ---
+\node[usecase_complex] (Explorar) at (-3, 6) {
+    \textbf{Explorar Catálogo}
+    \nodepart{lower}
+    \scriptsize points: filtro, detalle
+};
+
+\node[usecase] (Comprar) at (-3, 2.5) {Realizar Compra};
+
+\node[usecase_complex] (GestionarProd) at (-3, 0) {
+    \textbf{Gestionar Productos}
+    \nodepart{lower}
+    \scriptsize points: agregar, editar
+};
+
+\node[usecase] (VerPedidos) at (-3, -2.5) {Ver Pedidos};
+
+\node[usecase_complex] (GestionarUser) at (-3, -6) {
+    \textbf{Gestionar Usuarios}
+    \nodepart{lower}
+    \scriptsize points: aprobar, bloquear
+};
+
+% --- EXTENSIONES (Columna Derecha y Arriba) ---
+% Usamos coordenadas relativas para alinear mejor
+
+\node[usecase] (Filter) at (4, 7.5) {Filtrar Búsqueda};
+\node[usecase] (Details) at (4, 6) {Ver Detalles};
+
+\node[usecase] (Pay) at (4, 3.5) {Procesar Pago};
+
+\node[usecase] (AddProd) at (4, 1.2) {Agregar Nuevo};
+\node[usecase] (EditProd) at (4, -0.2) {Editar Existente};
+
+\node[usecase] (UploadImg) at (10, 1.2) {Subir Imágenes}; % Mismo nivel que AddProd
+
+\node[usecase] (Approve) at (4, -5) {Aprobar Vendedor};
+\node[usecase] (Block) at (4, -9) {Bloquear Acceso};
+
+% LOGIN (Ubicado estratégicamente abajo a la derecha pero accesible)
+\node[usecase, fill=gray!10] (Login) at (15, -2) {Iniciar Sesión};
+
+
+% ==========================================
+% 2. CONEXIONES LIMPIAS
+% ==========================================
+
+% --- Conexiones Actores (Estilo Recto/Ortogonal) ---
+% Comprador
+\draw[line] (-10, 5.5) -- (Explorar.west);
+\draw[line] (-10, 5.5) |- (Comprar.west); % |- significa bajar y luego horizontal
+
+% Vendedor
+\draw[line] (-10, -0.5) -- (GestionarProd.west);
+\draw[line] (-10, -0.5) |- (VerPedidos.west);
+
+% Admin
+\draw[line] (-10, -6.5) -- (GestionarUser.west);
+
+
+% --- Relaciones EXTEND (Curvas Suaves) ---
+% Sintaxis: to [bend left=GRADOS] (destino)
+
+% Explorar Extensions
+\draw[dashed_arrow] (Filter) to [bend right=20] node[above, sloped] {$\ll$extend$\gg$} (Explorar);
+\draw[dashed_arrow] (Details) -- node[below, sloped] {$\ll$extend$\gg$} (Explorar); % Recta porque están alineados
+
+% Gestionar Productos Extensions
+\draw[dashed_arrow] (AddProd) to [bend right=15] node[above, sloped] {$\ll$extend$\gg$} (GestionarProd);
+\draw[dashed_arrow] (EditProd) -- node[below, sloped] {$\ll$extend$\gg$} (GestionarProd);
+
+% Admin Extensions
+\draw[dashed_arrow] (Approve) to [bend right=20] node[above, sloped] {$\ll$extend$\gg$} (GestionarUser);
+\draw[dashed_arrow] (Block) to [bend left=20] node[below, sloped] {$\ll$extend$\gg$} (GestionarUser);
+
+
+% --- Relaciones INCLUDE (Rutas complejas para evitar cruces) ---
+
+% Comprar incluye Pago (directo)
+\draw[dashed_arrow] (Comprar) -- node[above, sloped] {$\ll$include$\gg$} (Pay);
+
+% AddProd incluye UploadImg (directo)
+\draw[dashed_arrow] (AddProd) -- node[above, sloped] {$\ll$include$\gg$} (UploadImg);
+
+
+% --- CONEXIONES A LOGIN (El mayor problema visual) ---
+% Usamos curvas amplias para que vayan por fuera
+
+% Comprar -> Login (Curva amplia por la derecha)
+\draw[dashed_arrow] (Comprar) to [out=0, in=90] node[near end, sloped, above] {$\ll$include$\gg$} (Login.north);
+
+% GestionarProd -> Login
+\draw[dashed_arrow] (GestionarProd.south east) to [bend right=20] node[sloped, above] {$\ll$include$\gg$} (Login.west);
+
+% VerPedidos -> Login
+\draw[dashed_arrow] (VerPedidos) to [bend right=10] node[sloped, below] {$\ll$include$\gg$} (Login.west);
+
+% GestionarUser -> Login (Curva amplia por abajo)
+\draw[dashed_arrow] (GestionarUser.east) to [out=0, in=270] node[sloped, below] {$\ll$include$\gg$} (Login.south);
+
+
+% --- LÍMITE DEL SISTEMA ---
+\node[draw, thick, rectangle, rounded corners=1cm, dashed,
+      fit=(Explorar) (GestionarUser) (UploadImg) (Login) (Filter) (Block),
+      label={[anchor=south, font=\Large\bfseries, yshift=0.5cm]north:Sistema Silicon Trail}] (SystemBox) {};
+
+\end{tikzpicture}
+
+\end{adjustbox}
+\caption{Diagrama de Casos de Uso }
+\end{figure}
+
+\end{document}

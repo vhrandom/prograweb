@@ -1,0 +1,143 @@
+\documentclass{article}
+
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usepackage{multirow}
+\usepackage[margin=1cm, landscape]{geometry}
+
+\begin{document}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[node distance=2cm]
+
+%======================= NODOS (TABLAS) =======================
+
+% Usuario (Centro)
+\node (Usuario) [inner sep=0pt] {
+\begin{tabular}{|l|l|}
+\hline
+\multicolumn{2}{|c|}{\textbf{Usuario}}\\\hline
+\textbf{PK} & id\\\hline
+           & nombre\\
+           & email\\
+           & password\\
+           & rol\\
+           & fecha\_registro\\\hline
+\end{tabular}
+};
+
+% Vendedor (Izquierda de Usuario)
+\node (Vendedor) [left=3cm of Usuario, inner sep=0pt] {
+\begin{tabular}{|l|l|}
+\hline
+\multicolumn{2}{|c|}{\textbf{Vendedor}}\\\hline
+\textbf{PK} & id\\\hline
+\textbf{FK} & id\_usuario\\\hline
+            & nombre\_tienda\\
+            & rating\\
+            & ubicacion\\
+            & estado\\\hline
+\end{tabular}
+};
+
+% Pedido (Derecha de Usuario)
+\node (Pedido) [right=3cm of Usuario, inner sep=0pt] {
+\begin{tabular}{|l|l|}
+\hline
+\multicolumn{2}{|c|}{\textbf{Pedido}}\\\hline
+\textbf{PK} & id\\\hline
+\textbf{FK} & id\_usuario\\\hline
+            & total\\
+            & estado\\
+            & fecha\\\hline
+\end{tabular}
+};
+
+% Producto (Abajo de Vendedor)
+\node (Producto) [below=3cm of Vendedor, inner sep=0pt] {
+\begin{tabular}{|l|l|}
+\hline
+\multicolumn{2}{|c|}{\textbf{Producto}}\\\hline
+\textbf{PK} & id\\\hline
+\textbf{FK} & id\_vendedor\\
+\textbf{FK} & id\_categoria\\\hline
+            & titulo\\
+            & precio\\
+            & stock\\
+            & marca\\
+            & descripcion\\\hline
+\end{tabular}
+};
+
+% Reseña (Abajo de Usuario)
+\node (Resena) [below=3cm of Usuario, inner sep=0pt] {
+\begin{tabular}{|l|l|}
+\hline
+\multicolumn{2}{|c|}{\textbf{Reseña}}\\\hline
+\textbf{PK} & id\\\hline
+\textbf{FK} & id\_usuario\\
+\textbf{FK} & id\_producto\\\hline
+            & calificacion\\
+            & comentario\\
+            & fecha\\\hline
+\end{tabular}
+};
+
+% DetallePedido (Abajo de Pedido)
+\node (DetallePedido) [below=3cm of Pedido, inner sep=0pt] {
+\begin{tabular}{|l|l|}
+\hline
+\multicolumn{2}{|c|}{\textbf{DetallePedido}}\\\hline
+\multirow{2}{*}{\textbf{PK FK}} & id\_pedido\\\cline{2-2}
+                                & id\_producto\\\hline
+                                & cantidad\\
+                                & precio\_unitario\\\hline
+\end{tabular}
+};
+
+% Categoría (Abajo de Producto)
+\node (Categoria) [below=2cm of Producto, inner sep=0pt] {
+\begin{tabular}{|l|l|}
+\hline
+\multicolumn{2}{|c|}{\textbf{Categoría}}\\\hline
+\textbf{PK} & id\\\hline
+            & nombre\\
+            & icono\\\hline
+\end{tabular}
+};
+
+%======================= RELACIONES =======================
+
+% Usuario - Vendedor (1 : 1)
+\draw (Usuario.west) -- node[above,pos=0.2]{1} node[above,pos=0.8]{1} (Vendedor.east);
+
+% Usuario - Pedido (1 : N)
+\draw (Usuario.east) -- node[above,pos=0.2]{1} node[above,pos=0.8]{N} (Pedido.west);
+
+% Usuario - Reseña (1 : N)
+\draw (Usuario.south) -- node[right,pos=0.2]{1} node[right,pos=0.8]{N} (Resena.north);
+
+% Vendedor - Producto (1 : N)
+\draw (Vendedor.south) -- node[right,pos=0.2]{1} node[right,pos=0.8]{N} (Producto.north);
+
+% Pedido - DetallePedido (1 : N)
+\draw (Pedido.south) -- node[right,pos=0.2]{1} node[right,pos=0.8]{N} (DetallePedido.north);
+
+% Producto - DetallePedido (1 : N) - Cruzada larga
+\draw (Producto.east) -- node[above,pos=0.1]{1} node[above,pos=0.9]{N} (DetallePedido.west);
+
+% Producto - Reseña (1 : N)
+\draw (Producto.east) -- node[above,pos=0.2]{1} node[above,pos=0.8]{N} (Resena.west);
+
+% Categoría - Producto (1 : N)
+\draw (Categoria.north) -- node[right,pos=0.2]{1} node[right,pos=0.8]{N} (Producto.south);
+
+\end{tikzpicture}
+\caption{Modelo Relacional - AppleAura}
+\end{figure}
+
+\end{document}

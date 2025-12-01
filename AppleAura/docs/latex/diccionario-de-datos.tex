@@ -1,0 +1,62 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{longtable}
+\usepackage{geometry}
+\usepackage{array}
+\usepackage{xcolor}
+\geometry{a4paper, margin=1in}
+
+\definecolor{headergray}{gray}{0.9}
+
+\begin{document}
+
+\section*{Diccionario de Datos}
+
+\subsection*{Entidad: Users (Usuarios)}
+\begin{longtable}{|p{3cm}|p{3cm}|p{1.5cm}|p{6cm}|}
+\hline
+\rowcolor{headergray} \textbf{Campo} & \textbf{Tipo de Dato} & \textbf{Llave} & \textbf{Descripción} \\ \hline
+id & Integer & PK & Identificador único del usuario. \\ \hline
+email & Varchar(255) & & Correo electrónico único. \\ \hline
+passwordHash & Varchar(255) & & Hash seguro de la contraseña. \\ \hline
+name & Varchar(100) & & Nombre completo del usuario. \\ \hline
+role & Enum & & Rol del usuario: 'buyer', 'seller', 'admin'. \\ \hline
+createdAt & Timestamp & & Fecha y hora de registro. \\ \hline
+\end{longtable}
+
+\subsection*{Entidad: SellerProfiles (Perfiles de Vendedor)}
+\begin{longtable}{|p{3cm}|p{3cm}|p{1.5cm}|p{6cm}|}
+\hline
+\rowcolor{headergray} \textbf{Campo} & \textbf{Tipo de Dato} & \textbf{Llave} & \textbf{Descripción} \\ \hline
+id & ObjectId & PK & Identificador único del perfil. \\ \hline
+userId & Integer & FK & Referencia al usuario propietario. \\ \hline
+displayName & Varchar(100) & & Nombre público de la tienda. \\ \hline
+status & Enum & & Estado: 'pending', 'verified', 'rejected'. \\ \hline
+rating & Float & & Calificación promedio (0-5). \\ \hline
+\end{longtable}
+
+\subsection*{Entidad: Products (Productos)}
+\begin{longtable}{|p{3cm}|p{3cm}|p{1.5cm}|p{6cm}|}
+\hline
+\rowcolor{headergray} \textbf{Campo} & \textbf{Tipo de Dato} & \textbf{Llave} & \textbf{Descripción} \\ \hline
+id & ObjectId & PK & Identificador único del producto. \\ \hline
+sellerId & ObjectId & FK & Referencia al vendedor. \\ \hline
+categoryId & ObjectId & FK & Referencia a la categoría. \\ \hline
+title & Varchar(200) & & Nombre del producto. \\ \hline
+price & Decimal(10,2) & & Precio unitario. \\ \hline
+stock & Integer & & Cantidad disponible en inventario. \\ \hline
+status & Enum & & Estado: 'draft', 'active', 'paused'. \\ \hline
+\end{longtable}
+
+\subsection*{Entidad: Orders (Pedidos)}
+\begin{longtable}{|p{3cm}|p{3cm}|p{1.5cm}|p{6cm}|}
+\hline
+\rowcolor{headergray} \textbf{Campo} & \textbf{Tipo de Dato} & \textbf{Llave} & \textbf{Descripción} \\ \hline
+id & ObjectId & PK & Identificador único del pedido. \\ \hline
+userId & Integer & FK & Referencia al comprador. \\ \hline
+totalCents & Integer & & Monto total en centavos. \\ \hline
+status & Enum & & Estado: 'pending', 'paid', 'shipped', 'delivered'. \\ \hline
+createdAt & Timestamp & & Fecha de creación del pedido. \\ \hline
+\end{longtable}
+
+\end{document}

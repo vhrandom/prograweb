@@ -84,7 +84,7 @@ const BRANDS = [
 interface Product {
   id: string;
   title: string;
-  price: number; // Viene del backend en centavos (ej: 1000000 para $10.000)
+  price: number; 
   stock: number;
   status: "active" | "out_of_stock" | "draft" | "inactive";
   sales: number;
@@ -346,7 +346,6 @@ export default function SellerDashboard() {
         price: editFormData.price ? parseFloat(editFormData.price.toString()) : undefined,
         stock: editFormData.stock ? parseInt(editFormData.stock.toString()) : undefined,
         discountPercentage: editFormData.discountPercentage ? parseInt(editFormData.discountPercentage.toString()) : 0,
-        // Al enviar, si es gratis, enviamos costo 0
         shippingCost: editFormData.isFreeShipping ? 0 : (editFormData.shippingCost !== undefined ? parseFloat(editFormData.shippingCost.toString()) : 0),
         isFreeShipping: editFormData.isFreeShipping
       };
@@ -377,6 +376,13 @@ export default function SellerDashboard() {
 
   if (loading) return <LoadingScreen />;
 
+  // --- ESTILOS DE INPUTS REFINADOS ---
+  // Modo Claro: Fondo blanco, borde gris sutil, sombra suave (mucho más limpio que el gris).
+  // Modo Oscuro: Fondo oscuro, borde oscuro sutil.
+  const inputClass = "h-11 bg-white border border-gray-200 text-gray-900 text-sm rounded-lg shadow-sm placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:bg-neutral-800 dark:border-neutral-700 dark:text-white dark:placeholder:text-neutral-500 dark:focus:border-indigo-500/50 dark:focus:ring-indigo-500/10";
+  
+  const labelClass = "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-gray-700 dark:text-neutral-300";
+
   if (isNewSeller) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-neutral-950 p-4">
@@ -395,18 +401,18 @@ export default function SellerDashboard() {
           <CardContent>
             <form onSubmit={handleCreateProfile} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="displayName">Nombre de la Tienda</Label>
-                <Input id="displayName" name="displayName" required placeholder="Ej: TechStore Chile" className="h-11" />
+                <Label htmlFor="displayName" className={labelClass}>Nombre de la Tienda</Label>
+                <Input id="displayName" name="displayName" required placeholder="Ej: TechStore Chile" className={inputClass} />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Región</Label>
+                  <Label className={labelClass}>Región</Label>
                   <Select value={selectedRegion} onValueChange={setSelectedRegion}>
-                    <SelectTrigger className="h-11">
+                    <SelectTrigger className={inputClass}>
                       <SelectValue placeholder="Selecciona una región" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
                       {regionsAndCities.map((r) => (
                         <SelectItem key={r.region} value={r.region}>{r.region}</SelectItem>
                       ))}
@@ -414,12 +420,12 @@ export default function SellerDashboard() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Ciudad</Label>
+                  <Label className={labelClass}>Ciudad</Label>
                   <Select value={selectedCity} onValueChange={setSelectedCity} disabled={!selectedRegion}>
-                    <SelectTrigger className="h-11">
+                    <SelectTrigger className={inputClass}>
                       <SelectValue placeholder="Selecciona una ciudad" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
                       {availableCities.map((city) => (
                         <SelectItem key={city} value={city}>{city}</SelectItem>
                       ))}
@@ -428,10 +434,10 @@ export default function SellerDashboard() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Textarea id="description" name="description" required placeholder="Cuéntanos qué vendes..." className="min-h-[100px] resize-none" />
+                <Label htmlFor="description" className={labelClass}>Descripción</Label>
+                <Textarea id="description" name="description" required placeholder="Cuéntanos qué vendes..." className={`${inputClass} min-h-[100px] resize-none pt-3`} />
               </div>
-              <Button type="submit" size="lg" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
+              <Button type="submit" size="lg" className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={isSubmitting}>
                 {isSubmitting ? "Configurando..." : "Comenzar a Vender"}
               </Button>
             </form>
@@ -459,7 +465,7 @@ export default function SellerDashboard() {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3">Menu</p>
             <Button
               variant={activeView === "overview" ? "secondary" : "ghost"}
-              className={`w-full justify-start h-10 ${activeView === "overview" ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300" : ""}`}
+              className={`w-full justify-start h-10 ${activeView === "overview" ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300" : "dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800"}`}
               onClick={() => setActiveView("overview")}
             >
               <LayoutDashboard className="mr-3 h-4 w-4" />
@@ -467,7 +473,7 @@ export default function SellerDashboard() {
             </Button>
             <Button
               variant={activeView === "products" ? "secondary" : "ghost"}
-              className={`w-full justify-start h-10 ${activeView === "products" ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300" : ""}`}
+              className={`w-full justify-start h-10 ${activeView === "products" ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300" : "dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800"}`}
               onClick={() => setActiveView("products")}
             >
               <Package className="mr-3 h-4 w-4" />
@@ -475,7 +481,7 @@ export default function SellerDashboard() {
             </Button>
             <Button
               variant={activeView === "orders" ? "secondary" : "ghost"}
-              className={`w-full justify-start h-10 ${activeView === "orders" ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300" : ""}`}
+              className={`w-full justify-start h-10 ${activeView === "orders" ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300" : "dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800"}`}
               onClick={() => setActiveView("orders")}
             >
               <ShoppingCart className="mr-3 h-4 w-4" />
@@ -483,7 +489,7 @@ export default function SellerDashboard() {
             </Button>
             <Button
               variant={activeView === "settings" ? "secondary" : "ghost"}
-              className={`w-full justify-start h-10 ${activeView === "settings" ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300" : ""}`}
+              className={`w-full justify-start h-10 ${activeView === "settings" ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300" : "dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800"}`}
               onClick={() => setActiveView("settings")}
             >
               <Settings className="mr-3 h-4 w-4" />
@@ -516,12 +522,12 @@ export default function SellerDashboard() {
             {activeView === 'overview' && 'Panel de Control'}
             {activeView === 'products' && 'Inventario'}
             {activeView === 'orders' && 'Gestión de Órdenes'}
-            {activeView === 'add-product' && <><span onClick={() => setActiveView("products")} className="cursor-pointer hover:underline text-gray-500 font-normal">Inventario</span> <ChevronRight className="w-4 h-4 text-gray-400" /> Nuevo Producto</>}
+            {activeView === 'add-product' && <><span onClick={() => setActiveView("products")} className="cursor-pointer hover:underline text-gray-500 dark:text-neutral-400 font-normal">Inventario</span> <ChevronRight className="w-4 h-4 text-gray-400" /> Nuevo Producto</>}
             {activeView === 'settings' && 'Configuración de Tienda'}
           </h1>
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" className="rounded-full border-gray-200 hover:bg-gray-100 relative">
-              <Bell className="h-5 w-5 text-gray-600" />
+            <Button variant="outline" size="icon" className="rounded-full border-gray-200 hover:bg-gray-100 relative dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700">
+              <Bell className="h-5 w-5 text-gray-600 dark:text-neutral-400" />
               <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-neutral-900"></span>
             </Button>
             {activeView === 'products' && (
@@ -560,8 +566,8 @@ export default function SellerDashboard() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <Card className="lg:col-span-2 border-0 shadow-sm bg-white dark:bg-neutral-900 ring-1 ring-gray-100 dark:ring-neutral-800">
                   <CardHeader>
-                    <CardTitle className="text-lg">Tendencia de Ventas</CardTitle>
-                    <CardDescription>Visualiza el rendimiento de tus ventas</CardDescription>
+                    <CardTitle className="text-lg dark:text-white">Tendencia de Ventas</CardTitle>
+                    <CardDescription className="dark:text-neutral-400">Visualiza el rendimiento de tus ventas</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="h-[350px] w-full">
@@ -573,7 +579,7 @@ export default function SellerDashboard() {
                               <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
                             </linearGradient>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" className="dark:stroke-neutral-800" />
                           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} dy={10} />
                           <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
                           <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
@@ -586,8 +592,8 @@ export default function SellerDashboard() {
 
                 <Card className="border-0 shadow-sm bg-white dark:bg-neutral-900 ring-1 ring-gray-100 dark:ring-neutral-800">
                   <CardHeader>
-                    <CardTitle className="text-lg">Órdenes Recientes</CardTitle>
-                    <CardDescription>Últimas transacciones</CardDescription>
+                    <CardTitle className="text-lg dark:text-white">Órdenes Recientes</CardTitle>
+                    <CardDescription className="dark:text-neutral-400">Últimas transacciones</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-6">
@@ -599,11 +605,11 @@ export default function SellerDashboard() {
                             </div>
                             <div>
                               <p className="font-semibold text-sm text-gray-900 dark:text-white truncate max-w-[140px]">{order.product}</p>
-                              <p className="text-xs text-gray-500">{order.buyer}</p>
+                              <p className="text-xs text-gray-500 dark:text-neutral-400">{order.buyer}</p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-semibold text-sm">CLP ${(order.total).toLocaleString()}</p>
+                            <p className="font-semibold text-sm dark:text-neutral-200">CLP ${(order.total).toLocaleString()}</p>
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${order.status === 'delivered' ? 'bg-green-100 text-green-700' :
                               order.status === 'pending' ? 'bg-amber-100 text-amber-700' :
                                 'bg-gray-100 text-gray-700'
@@ -631,34 +637,34 @@ export default function SellerDashboard() {
               <Card className="border-0 shadow-sm bg-white dark:bg-neutral-900 ring-1 ring-gray-100 dark:ring-neutral-800">
                 <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <CardTitle className="text-lg">Listado de Productos</CardTitle>
-                    <CardDescription>Gestiona el inventario de tu tienda</CardDescription>
+                    <CardTitle className="text-lg dark:text-white">Listado de Productos</CardTitle>
+                    <CardDescription className="dark:text-neutral-400">Gestiona el inventario de tu tienda</CardDescription>
                   </div>
                   <div className="relative w-full md:w-72">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input placeholder="Buscar por nombre o SKU..." className="pl-9 bg-gray-50 border-gray-200 focus:bg-white transition-colors" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-neutral-500" />
+                    <Input placeholder="Buscar por nombre o SKU..." className={`${inputClass} pl-9`} />
                   </div>
                 </div>
               </Card>
 
               <div className="grid grid-cols-1 gap-4">
                 {products.length === 0 ? (
-                  <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-                    <Package className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900">Tu inventario está vacío</h3>
-                    <p className="text-gray-500 mb-6">Comienza agregando tu primer producto</p>
+                  <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300 dark:bg-neutral-900 dark:border-neutral-800">
+                    <Package className="w-16 h-16 mx-auto text-gray-300 dark:text-neutral-600 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">Tu inventario está vacío</h3>
+                    <p className="text-gray-500 dark:text-neutral-400 mb-6">Comienza agregando tu primer producto</p>
                     <Button onClick={() => setActiveView("add-product")} className="bg-indigo-600">
                       <Plus className="mr-2 h-4 w-4" /> Agregar Producto
                     </Button>
                   </div>
                 ) : (
                   products.map((product) => (
-                    <div key={product.id} className="group flex flex-col sm:flex-row items-center gap-6 p-4 bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-xl hover:shadow-lg transition-all duration-300 hover:border-indigo-100">
+                    <div key={product.id} className="group flex flex-col sm:flex-row items-center gap-6 p-4 bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-xl hover:shadow-lg transition-all duration-300 hover:border-indigo-100 dark:hover:border-indigo-900/30">
                       <div className="relative w-full sm:w-24 h-24 rounded-lg bg-gray-50 dark:bg-neutral-800 overflow-hidden flex-shrink-0">
                         {product.images?.[0] ? (
                           <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300">
+                          <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-neutral-600">
                             <ImageIcon className="w-8 h-8" />
                           </div>
                         )}
@@ -668,27 +674,25 @@ export default function SellerDashboard() {
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
                           <h3 className="font-bold text-gray-900 dark:text-white text-lg">{product.title}</h3>
                           {product.brand && (
-                            <Badge variant="outline" className="w-fit mx-auto sm:mx-0 text-xs font-normal text-gray-500 border-gray-200">
+                            <Badge variant="outline" className="w-fit mx-auto sm:mx-0 text-xs font-normal text-gray-500 dark:text-neutral-400 border-gray-200 dark:border-neutral-700">
                               {product.brand}
                             </Badge>
                           )}
                         </div>
-                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-sm text-gray-500">
+                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-sm text-gray-500 dark:text-neutral-400">
                           <div className="flex items-center gap-1">
                             <Tag className="w-3 h-3" />
                             <span className="capitalize">{product.categoryId || 'Sin categoría'}</span>
                           </div>
                           <span>•</span>
-                          <span>Stock: <span className={product.stock < 5 ? "text-red-500 font-medium" : "text-gray-700 font-medium"}>{product.stock}</span></span>
+                          <span>Stock: <span className={product.stock < 5 ? "text-red-500 font-medium" : "text-gray-700 dark:text-neutral-300 font-medium"}>{product.stock}</span></span>
                           <span>•</span>
-                          {/* CORREGIDO: Muestra SKU */}
                           <span>SKU: {product.sku ? product.sku : 'N/A'}</span>
                         </div>
                       </div>
 
                       <div className="flex flex-row sm:flex-col items-center gap-4 sm:gap-1 text-right min-w-[120px]">
-                        <span className="text-lg font-bold text-indigo-600">
-                          {/* CORREGIDO: División por 100 para mostrar precio real */}
+                        <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
                           ${((product.price ?? 0) / 100).toLocaleString('es-CL')}
                         </span>
                         {product.discountPercentage && product.discountPercentage > 0 && (
@@ -698,14 +702,12 @@ export default function SellerDashboard() {
                         )}
                       </div>
 
-                      <div className="flex sm:flex-col gap-2 border-t sm:border-t-0 sm:border-l border-gray-100 pt-4 sm:pt-0 sm:pl-4 w-full sm:w-auto justify-center">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-blue-600 hover:bg-blue-50" onClick={() => {
+                      <div className="flex sm:flex-col gap-2 border-t sm:border-t-0 sm:border-l border-gray-100 dark:border-neutral-800 pt-4 sm:pt-0 sm:pl-4 w-full sm:w-auto justify-center">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400" onClick={() => {
                           setEditingProduct(product);
-                          // CORREGIDO: Cargar datos correctamente al editar
                           setEditFormData({
                             title: product.title,
                             description: product.description,
-                            // Dividimos por 100 para que el input muestre 360000 y no 36000000
                             price: product.price / 100,
                             categoryId: product.categoryId,
                             brand: product.brand,
@@ -713,7 +715,6 @@ export default function SellerDashboard() {
                             sku: product.sku,
                             discountPercentage: product.discountPercentage || 0,
                             images: product.images || [],
-                            // Si el envío es gratis, forzamos costo visual a 0
                             shippingCost: product.isFreeShipping ? 0 : (product.shippingCost ? product.shippingCost / 100 : 0),
                             isFreeShipping: product.isFreeShipping || false
                           });
@@ -722,19 +723,19 @@ export default function SellerDashboard() {
                         </Button>
                         <AlertDialog open={productToDelete === product.id} onOpenChange={(open) => !open && setProductToDelete(null)}>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50" onClick={() => setProductToDelete(product.id)}>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:hover:text-red-400" onClick={() => setProductToDelete(product.id)}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent>
+                          <AlertDialogContent className="dark:bg-neutral-900 dark:border-neutral-800">
                             <AlertDialogHeader>
-                              <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
-                              <AlertDialogDescription>
+                              <AlertDialogTitle className="dark:text-white">¿Eliminar producto?</AlertDialogTitle>
+                              <AlertDialogDescription className="dark:text-neutral-400">
                                 Esta acción eliminará "{product.title}" permanentemente.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogCancel className="dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700">Cancelar</AlertDialogCancel>
                               <AlertDialogAction onClick={() => handleDeleteProduct(product.id)} className="bg-red-600">Eliminar</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
@@ -751,12 +752,12 @@ export default function SellerDashboard() {
             <div className="max-w-4xl mx-auto">
               <Card className="border-0 shadow-lg bg-white dark:bg-neutral-900 ring-1 ring-gray-100 dark:ring-neutral-800">
                 <CardHeader className="border-b border-gray-100 dark:border-neutral-800 pb-6">
-                  <div className="flex items-center gap-2 text-indigo-600 mb-2">
+                  <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 mb-2">
                     <Package className="w-5 h-5" />
                     <span className="text-sm font-semibold uppercase tracking-wider">Inventario</span>
                   </div>
-                  <CardTitle className="text-2xl">Nuevo Producto</CardTitle>
-                  <CardDescription>Completa la información detallada para publicar tu producto en el marketplace.</CardDescription>
+                  <CardTitle className="text-2xl dark:text-white">Nuevo Producto</CardTitle>
+                  <CardDescription className="dark:text-neutral-400">Completa la información detallada para publicar tu producto en el marketplace.</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-8">
                   <form onSubmit={handleCreateProduct} className="space-y-8">
@@ -765,20 +766,20 @@ export default function SellerDashboard() {
                       <h3 className="text-sm font-semibold text-gray-900 dark:text-white border-l-4 border-indigo-500 pl-3">Información Básica</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2 md:col-span-2">
-                          <Label>Título del Producto</Label>
+                          <Label className={labelClass}>Título del Producto</Label>
                           <Input
                             value={newProduct.title}
                             onChange={e => setNewProduct({ ...newProduct, title: e.target.value })}
                             required
                             placeholder="Ej: MacBook Pro M3 Max 16 Pulgadas"
-                            className="h-11 bg-gray-50 focus:bg-white transition-colors"
+                            className={inputClass}
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Categoría</Label>
+                          <Label className={labelClass}>Categoría</Label>
                           <Select onValueChange={v => setNewProduct({ ...newProduct, categoryId: v })}>
-                            <SelectTrigger className="h-11 bg-gray-50"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                            <SelectContent>
+                            <SelectTrigger className={inputClass}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                            <SelectContent className="bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
                               {CATEGORIES.map(cat => (
                                 <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
                               ))}
@@ -786,10 +787,10 @@ export default function SellerDashboard() {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label>Marca</Label>
+                          <Label className={labelClass}>Marca</Label>
                           <Select onValueChange={v => setNewProduct({ ...newProduct, brand: v })}>
-                            <SelectTrigger className="h-11 bg-gray-50"><SelectValue placeholder="Seleccionar Marca..." /></SelectTrigger>
-                            <SelectContent>
+                            <SelectTrigger className={inputClass}><SelectValue placeholder="Seleccionar Marca..." /></SelectTrigger>
+                            <SelectContent className="bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
                               {BRANDS.map(brand => (
                                 <SelectItem key={brand.value} value={brand.value}>{brand.label}</SelectItem>
                               ))}
@@ -799,24 +800,24 @@ export default function SellerDashboard() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Descripción</Label>
+                        <Label className={labelClass}>Descripción</Label>
                         <Textarea
                           value={newProduct.description}
                           onChange={e => setNewProduct({ ...newProduct, description: e.target.value })}
-                          className="min-h-[120px] bg-gray-50 focus:bg-white resize-none"
+                          className={`${inputClass} min-h-[120px] resize-none pt-3`}
                           placeholder="Describe las características principales, estado y detalles técnicos..."
                         />
                       </div>
                     </div>
 
-                    <Separator />
+                    <Separator className="dark:bg-neutral-800" />
 
                     {/* Sección 2: Precios e Inventario */}
                     <div className="space-y-6">
                       <h3 className="text-sm font-semibold text-gray-900 dark:text-white border-l-4 border-indigo-500 pl-3">Precios e Inventario</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
-                          <Label>Precio (CLP)</Label>
+                          <Label className={labelClass}>Precio (CLP)</Label>
                           <div className="relative">
                             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
@@ -825,24 +826,23 @@ export default function SellerDashboard() {
                               onChange={e => setNewProduct({ ...newProduct, price: e.target.value })}
                               required
                               placeholder="0"
-                              className="pl-9 h-11 bg-gray-50"
+                              className={`${inputClass} pl-9`}
                             />
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label>Stock Disponible</Label>
+                          <Label className={labelClass}>Stock Disponible</Label>
                           <Input
                             type="number"
                             value={newProduct.stock}
                             onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })}
                             required
                             placeholder="0"
-                            className="h-11 bg-gray-50"
+                            className={inputClass}
                           />
                         </div>
-                        {/* CORREGIDO: Input de SKU presente */}
                         <div className="space-y-2">
-                          <Label>SKU (Código)</Label>
+                          <Label className={labelClass}>SKU (Código)</Label>
                           <div className="relative">
                             <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
@@ -850,48 +850,49 @@ export default function SellerDashboard() {
                               onChange={e => setNewProduct({ ...newProduct, sku: e.target.value })}
                               required
                               placeholder="COD-001"
-                              className="pl-9 h-11 bg-gray-50"
+                              className={`${inputClass} pl-9`}
                             />
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="discountPercentage">Descuento (%)</Label>
+                          <Label htmlFor="discountPercentage" className={labelClass}>Descuento (%)</Label>
                           <Input
                             id="discountPercentage"
                             type="number"
                             value={newProduct.discountPercentage}
                             onChange={(e) => setNewProduct({ ...newProduct, discountPercentage: e.target.value })}
                             placeholder="0"
-                            className="h-11 bg-gray-50"
+                            className={inputClass}
                           />
                         </div>
                       </div>
 
-                      <div className="p-4 bg-gray-50 rounded-lg flex items-center space-x-3 border border-gray-100">
+                      <div className="p-4 bg-gray-50 dark:bg-neutral-800/30 rounded-lg flex items-center space-x-3 border border-gray-100 dark:border-neutral-800">
                         <Checkbox
                           id="isFreeShipping"
                           checked={newProduct.isFreeShipping}
                           onCheckedChange={(checked) => setNewProduct({ ...newProduct, isFreeShipping: checked as boolean })}
+                          className="data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
                         />
                         <div className="grid gap-1.5 leading-none">
-                          <Label htmlFor="isFreeShipping" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          <Label htmlFor="isFreeShipping" className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 dark:text-neutral-200`}>
                             Envío Gratis
                           </Label>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 dark:text-neutral-400">
                             Si se activa, el costo de envío será $0 para el comprador.
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    <Separator />
+                    <Separator className="dark:bg-neutral-800" />
 
                     {/* Sección 3: Multimedia */}
                     <div className="space-y-6">
                       <h3 className="text-sm font-semibold text-gray-900 dark:text-white border-l-4 border-indigo-500 pl-3">Galería de Imágenes</h3>
                       <div className="space-y-2">
-                        <Label>Sube hasta 5 imágenes</Label>
-                        <div className="bg-gray-50 p-6 rounded-xl border-2 border-dashed border-gray-200 hover:border-indigo-300 transition-colors">
+                        <Label className={labelClass}>Sube hasta 5 imágenes</Label>
+                        <div className="bg-gray-50 dark:bg-neutral-800/30 p-6 rounded-xl border-2 border-dashed border-gray-200 dark:border-neutral-700 hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-colors">
                           <ImageUpload
                             value={newProduct.images}
                             onChange={urls => setNewProduct({ ...newProduct, images: urls })}
@@ -902,10 +903,10 @@ export default function SellerDashboard() {
                     </div>
 
                     <div className="flex justify-end gap-4 pt-6">
-                      <Button type="button" variant="outline" className="h-11 px-8" onClick={() => setActiveView("products")}>
+                      <Button type="button" variant="outline" className="h-11 px-8 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800" onClick={() => setActiveView("products")}>
                         Cancelar
                       </Button>
-                      <Button type="submit" className="h-11 px-8 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200" disabled={isSubmitting}>
+                      <Button type="submit" className="h-11 px-8 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 dark:shadow-none" disabled={isSubmitting}>
                         {isSubmitting ? "Publicando..." : "Publicar Producto"}
                       </Button>
                     </div>
@@ -918,27 +919,27 @@ export default function SellerDashboard() {
           {activeView === "orders" && (
             <Card className="max-w-7xl mx-auto border-0 shadow-sm bg-white dark:bg-neutral-900 ring-1 ring-gray-100 dark:ring-neutral-800">
               <CardHeader>
-                <CardTitle>Historial de Órdenes</CardTitle>
-                <CardDescription>Revisa el estado de tus ventas</CardDescription>
+                <CardTitle className="dark:text-white">Historial de Órdenes</CardTitle>
+                <CardDescription className="dark:text-neutral-400">Revisa el estado de tus ventas</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="rounded-md border border-gray-100 overflow-hidden">
-                  <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 grid grid-cols-12 gap-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <div className="rounded-md border border-gray-100 dark:border-neutral-800 overflow-hidden">
+                  <div className="bg-gray-50 dark:bg-neutral-800/50 px-4 py-3 border-b border-gray-100 dark:border-neutral-800 grid grid-cols-12 gap-4 text-xs font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wider">
                     <div className="col-span-4">Producto</div>
                     <div className="col-span-3">Comprador</div>
                     <div className="col-span-2">Fecha</div>
                     <div className="col-span-2 text-right">Total</div>
                     <div className="col-span-1 text-center">Estado</div>
                   </div>
-                  <div className="divide-y divide-gray-100">
+                  <div className="divide-y divide-gray-100 dark:divide-neutral-800">
                     {orders.map((order) => (
-                      <div key={order.id} className="px-4 py-4 grid grid-cols-12 gap-4 items-center hover:bg-gray-50/50 transition-colors text-sm">
-                        <div className="col-span-4 font-medium text-gray-900">{order.product}</div>
-                        <div className="col-span-3 text-gray-600">{order.buyer}</div>
-                        <div className="col-span-2 text-gray-500 text-xs">
+                      <div key={order.id} className="px-4 py-4 grid grid-cols-12 gap-4 items-center hover:bg-gray-50/50 dark:hover:bg-neutral-800/30 transition-colors text-sm">
+                        <div className="col-span-4 font-medium text-gray-900 dark:text-white">{order.product}</div>
+                        <div className="col-span-3 text-gray-600 dark:text-neutral-400">{order.buyer}</div>
+                        <div className="col-span-2 text-gray-500 dark:text-neutral-500 text-xs">
                           {new Date(order.date || Date.now()).toLocaleDateString()}
                         </div>
-                        <div className="col-span-2 text-right font-semibold text-gray-900">
+                        <div className="col-span-2 text-right font-semibold text-gray-900 dark:text-white">
                           ${order.total.toLocaleString()}
                         </div>
                         <div className="col-span-1 flex justify-center">
@@ -952,7 +953,7 @@ export default function SellerDashboard() {
                       </div>
                     ))}
                     {orders.length === 0 && (
-                      <div className="py-12 text-center text-gray-500">No hay historial de órdenes disponible.</div>
+                      <div className="py-12 text-center text-gray-500 dark:text-neutral-500">No hay historial de órdenes disponible.</div>
                     )}
                   </div>
                 </div>
@@ -967,28 +968,28 @@ export default function SellerDashboard() {
                   <div className="p-2 bg-indigo-50 rounded-lg">
                     <Settings className="w-5 h-5 text-indigo-600" />
                   </div>
-                  <CardTitle>Configuración de la Tienda</CardTitle>
+                  <CardTitle className="dark:text-white">Configuración de la Tienda</CardTitle>
                 </div>
-                <CardDescription>Actualiza la información visible para tus clientes</CardDescription>
+                <CardDescription className="dark:text-neutral-400">Actualiza la información visible para tus clientes</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleUpdateProfile} className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="displayName">Nombre de la Tienda</Label>
+                    <Label htmlFor="displayName" className={labelClass}>Nombre de la Tienda</Label>
                     <Input
                       id="displayName"
                       name="displayName"
                       defaultValue={sellerProfile.displayName}
                       required
-                      className="h-11 bg-gray-50 focus:bg-white transition-colors"
+                      className={inputClass}
                     />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Región</Label>
+                      <Label className={labelClass}>Región</Label>
                       <Select value={selectedRegion} onValueChange={setSelectedRegion}>
-                        <SelectTrigger className="h-11 bg-gray-50"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-                        <SelectContent>
+                        <SelectTrigger className={inputClass}><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
                           {regionsAndCities.map((r) => (
                             <SelectItem key={r.region} value={r.region}>{r.region}</SelectItem>
                           ))}
@@ -996,10 +997,10 @@ export default function SellerDashboard() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Ciudad</Label>
+                      <Label className={labelClass}>Ciudad</Label>
                       <Select value={selectedCity} onValueChange={setSelectedCity} disabled={!selectedRegion}>
-                        <SelectTrigger className="h-11 bg-gray-50"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-                        <SelectContent>
+                        <SelectTrigger className={inputClass}><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
                           {availableCities.map((city) => (
                             <SelectItem key={city} value={city}>{city}</SelectItem>
                           ))}
@@ -1008,15 +1009,15 @@ export default function SellerDashboard() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="description">Descripción Pública</Label>
+                    <Label htmlFor="description" className={labelClass}>Descripción Pública</Label>
                     <Textarea
                       id="description"
                       name="description"
                       defaultValue={sellerProfile.description}
-                      className="min-h-[120px] bg-gray-50 focus:bg-white transition-colors"
+                      className={`${inputClass} min-h-[120px] resize-none pt-3`}
                     />
                   </div>
-                  <Button type="submit" disabled={isSubmitting} className="w-full h-11 bg-indigo-600 hover:bg-indigo-700">
+                  <Button type="submit" disabled={isSubmitting} className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white">
                     {isSubmitting ? "Guardando..." : "Guardar Cambios"}
                   </Button>
                 </form>
@@ -1027,28 +1028,29 @@ export default function SellerDashboard() {
 
         {/* Edit Modal */}
         <Dialog open={!!editingProduct} onOpenChange={() => setEditingProduct(null)}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto dark:bg-neutral-900 dark:border-neutral-800">
             <DialogHeader>
-              <DialogTitle>Editar Producto</DialogTitle>
+              <DialogTitle className="dark:text-white">Editar Producto</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleUpdateProduct} className="space-y-6 pt-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2 md:col-span-2">
-                  <Label>Título</Label>
+                  <Label className={labelClass}>Título</Label>
                   <Input
                     value={editFormData.title || ""}
                     onChange={e => setEditFormData({ ...editFormData, title: e.target.value })}
                     required
+                    className={inputClass}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Categoría</Label>
+                  <Label className={labelClass}>Categoría</Label>
                   <Select
                     value={editFormData.categoryId}
                     onValueChange={v => setEditFormData({ ...editFormData, categoryId: v })}
                   >
-                    <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                    <SelectContent>
+                    <SelectTrigger className={inputClass}><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
                       {CATEGORIES.map(cat => (
                         <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
                       ))}
@@ -1056,13 +1058,13 @@ export default function SellerDashboard() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Marca</Label>
+                  <Label className={labelClass}>Marca</Label>
                   <Select
                     value={editFormData.brand}
                     onValueChange={v => setEditFormData({ ...editFormData, brand: v })}
                   >
-                    <SelectTrigger><SelectValue placeholder="Seleccionar Marca..." /></SelectTrigger>
-                    <SelectContent>
+                    <SelectTrigger className={inputClass}><SelectValue placeholder="Seleccionar Marca..." /></SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
                       {BRANDS.map(brand => (
                         <SelectItem key={brand.value} value={brand.value}>{brand.label}</SelectItem>
                       ))}
@@ -1073,40 +1075,43 @@ export default function SellerDashboard() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
-                  <Label>Precio (CLP)</Label>
+                  <Label className={labelClass}>Precio (CLP)</Label>
                   <Input
                     type="number"
                     value={editFormData.price || ""}
                     onChange={e => setEditFormData({ ...editFormData, price: parseFloat(e.target.value) })}
                     required
+                    className={inputClass}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Stock</Label>
+                  <Label className={labelClass}>Stock</Label>
                   <Input
                     type="number"
                     value={editFormData.stock || ""}
                     onChange={e => setEditFormData({ ...editFormData, stock: parseInt(e.target.value) })}
                     required
+                    className={inputClass}
                   />
                 </div>
-                {/* CORREGIDO: Input de SKU presente en Edición */}
                 <div className="space-y-2">
-                  <Label>SKU</Label>
+                  <Label className={labelClass}>SKU</Label>
                   <Input
                     value={editFormData.sku || ""}
                     onChange={e => setEditFormData({ ...editFormData, sku: e.target.value })}
                     required
+                    className={inputClass}
                   />
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
-                  <Label>Descuento (%)</Label>
+                  <Label className={labelClass}>Descuento (%)</Label>
                   <Input
                     type="number"
                     value={editFormData.discountPercentage || 0}
                     onChange={e => setEditFormData({ ...editFormData, discountPercentage: parseInt(e.target.value) })}
+                    className={inputClass}
                   />
                 </div>
               </div>
@@ -1116,13 +1121,14 @@ export default function SellerDashboard() {
                   id="editIsFreeShipping"
                   checked={editFormData.isFreeShipping || false}
                   onCheckedChange={(checked) => setEditFormData({ ...editFormData, isFreeShipping: checked as boolean })}
+                  className="data-[state=checked]:bg-indigo-600"
                 />
-                <Label htmlFor="editIsFreeShipping">Envío Gratis</Label>
+                <Label htmlFor="editIsFreeShipping" className={labelClass}>Envío Gratis</Label>
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditingProduct(null)}>Cancelar</Button>
-                <Button type="submit" disabled={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700">Guardar Cambios</Button>
+                <Button type="button" variant="outline" onClick={() => setEditingProduct(null)} className="dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800">Cancelar</Button>
+                <Button type="submit" disabled={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white">Guardar Cambios</Button>
               </DialogFooter>
             </form>
           </DialogContent>

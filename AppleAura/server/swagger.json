@@ -1,0 +1,125 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "AppleAura API",
+    "version": "1.0.0",
+    "description": "Documentación OpenAPI para la API de AppleAura (productos, auth, seller)."
+  },
+  "servers": [
+    { "url": "http://localhost:5000", "description": "Local development" }
+  ],
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "summary": "Registrar usuario",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string" },
+                  "password": { "type": "string" },
+                  "name": { "type": "string" }
+                },
+                "required": ["email","password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Usuario registrado" },
+          "400": { "description": "Error" }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string" },
+                  "password": { "type": "string" }
+                },
+                "required": ["email","password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Autenticación correcta",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "token": { "type": "string" } } } } }
+          },
+          "401": { "description": "Credenciales inválidas" }
+        }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "summary": "Listar productos",
+        "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "Lista de productos" } }
+      },
+      "post": {
+        "summary": "Crear producto (autenticado)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Producto creado" }, "401": { "description": "No autorizado" } }
+      }
+    },
+    "/api/products/{id}": {
+      "get": { "summary": "Obtener producto por id", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Producto" }, "404": { "description": "No encontrado" } } },
+      "put": { "summary": "Actualizar producto (autenticado)", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object" } } } }, "responses": { "200": { "description": "Producto actualizado" }, "401": { "description": "No autorizado" } } },
+      "delete": { "summary": "Eliminar producto (autenticado)", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Eliminado" }, "403": { "description": "Forbidden" } } }
+    },
+    "/api/seller/products": {
+      "get": {
+        "summary": "Listar productos del vendedor (autenticado)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Lista de productos" }, "401": { "description": "No autorizado" } }
+      }
+    },
+    "/api/upload-image": {
+      "post": {
+        "summary": "Subir imagen",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "URL de la imagen" }, "400": { "description": "Error" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    }
+  }
+}

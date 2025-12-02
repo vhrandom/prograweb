@@ -7,6 +7,8 @@ import { storage } from "./storage";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { randomBytes } from "crypto";
 import multer from "multer";
+import fs from "fs";
+import swaggerUi from "swagger-ui-express";
 
 // --- Tipos y Extensiones ---
 interface AuthRequest extends Request {
@@ -78,6 +80,15 @@ const parseProductFilters = (query: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Cargar documentación OpenAPI desde el archivo JSON y exponer Swagger UI
+  try {
+    const swaggerUrl = new URL('./swagger.json', import.meta.url);
+    const swaggerDocument = JSON.parse(fs.readFileSync(swaggerUrl, 'utf8'));
+    app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+    app.get('/api/swagger.json', (_req, res) => res.json(swaggerDocument));
+  } catch (err) {
+    console.warn('No se pudo cargar swagger.json:', err);
+  }
 
   // --- Auth Routes ---
   app.post("/api/auth/register", asyncHandler(async (req, res) => {
